@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "towing-intake": {
+      "command": "python",
+      "args": ["towing_server.py"]
+    }
+  }
+}

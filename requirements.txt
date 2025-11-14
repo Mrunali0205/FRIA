@@ -1,0 +1,9 @@
+fastmcp
+streamlit
+asyncio
+dotenv
+openai
+fastapi
+uvicorn
+pydantic-settings
+Jinja2
