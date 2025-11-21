@@ -1,10 +1,12 @@
 from fastmcp import FastMCP
 from pathlib import Path
 import json
+from typing import Optional, List, Dict, Any
+
 
 TOW_JSON = Path("tow_extract.json")  # produced by preprocess_manual.py
 
-def load_tow_chunks() -> list[dict]:
+def load_tow_chunks() -> List[Dict[str, Any]]:
     if not TOW_JSON.exists():
         return []
     data = json.loads(TOW_JSON.read_text(encoding="utf-8"))
@@ -26,7 +28,32 @@ REQUIRED_FIELDS = [
 DB_PATH = Path("tow_data.json")
 
 def default_data() -> dict:
-    return {f: None for f in REQUIRED_FIELDS}
+    """
+    Pre-filled default data for Tesla owner.
+    Known vehicle/owner info is populated; accident details are None.
+    """
+    return {
+        #  Known owner information (pre-filled from account)
+        "full_name": "Sarah Chen",
+        "contact_number": "+1-312-555-2098",
+        "email_address": "sarah.chen@tesla.com",
+        
+        #  Accident-specific details (to be filled during conversation)
+        "accident_location_address": None,
+        
+        #  Known vehicle information (pre-filled from registration)
+        "Tesla_model": "Model 3 Long Range",
+        "VIN_number": "5YJ3E1EA7JF123456",
+        "license_plate_number": "IL 93Z882",
+        
+        # Known insurance information (pre-filled from account)
+        "insurance_company_name": "Tesla Insurance",
+        "insurance_policy_number": "TI-882934",
+        
+        # Accident-specific details (to be filled during conversation)
+        "is_vehicle_operable": None,
+        "damage_description": None,
+    }
 
 def load_db() -> dict:
     # Create or heal file if missing/invalid
@@ -100,7 +127,7 @@ def get_fields():
 
 # API: Set a single field
 @mcp.tool
-def set_field(field: str, value: str | None):
+def set_field(field: str, value: Optional[str]):
     """Set a single field. Pass null to clear."""
     if field not in REQUIRED_FIELDS:
         return {"ok": False, "error": f"{field} not in required list"}
@@ -127,3 +154,8 @@ def list_required_fields():
 if __name__ == "__main__":
     # Serve over HTTP on root path
     mcp.run(transport="http", host="127.0.0.1", port=8765)
+
+
+
+
+

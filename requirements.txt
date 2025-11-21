@@ -1,9 +1,19 @@
+# Core dependencies
 fastmcp
+reflex
 streamlit
-asyncio
-dotenv
+python-dotenv
 openai
 fastapi
-uvicorn
+uvicorn[standard]
 pydantic-settings
 Jinja2
+httpx
+
+# Geo-location & mapping
+geopy
+folium
+streamlit-folium
+
+# Additional utilities
+requests

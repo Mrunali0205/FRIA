@@ -1,6 +1,7 @@
 import os
 import re
 from jinja2 import Environment, FileSystemLoader
+from typing import List, Dict, Optional, Any
 
 from app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
 
@@ -12,7 +13,7 @@ template_env = Environment(loader=FileSystemLoader(templates_path))
 azure_openai_client = AzureOpenAIClient()
 
 # Render Prompt Templates
-def render_chat_prompt_template(chat_history: list[dict], current_data: dict) -> str:
+def render_chat_prompt_template(chat_history: List[Dict[str, Any]], current_data: Dict[str, Any]) -> str:
     template = template_env.get_template("chat_prompt_template.j2")
     prompt = template.render(chat_history=chat_history, current_data=current_data)
     return prompt
@@ -30,9 +31,9 @@ def render_towing_guide_prompt_template(source: str) -> str:
 
 def invoke_agent(
     user_message: str = "",
-    chat_history: list[dict] = None,
-    current_data: dict = None,
-    towing_instruction: str = None
+    chat_history: Optional[List[Dict[str, Any]]] = None,
+    current_data: Optional[Dict[str, Any]] = None,
+    towing_instruction: Optional[str] = None
 ) -> str:
     """
     Invoke the agent in either:

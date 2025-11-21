@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "latest": "^0.2.0",
+    "node": "^25.2.1"
+  },
+  "devDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "^1.0.0-beta.51"
+  }
+}

@@ -1,13 +1,13 @@
 {
-  "full_name": "Prashant",
-  "contact_number": "8726642390",
-  "email_address": "prashanttrivedi128@gmail.com",
-  "accident_location_address": "57th street",
-  "Tesla_model": "Tesla Model Y",
-  "VIN_number": "54799231531",
-  "license_plate_number": "MH12DE1433",
-  "insurance_company_name": "GB",
-  "insurance_policy_number": "13335489978",
+  "full_name": "Sarah Chen",
+  "contact_number": "+1-312-555-2098",
+  "email_address": "sarah.chen@tesla.com",
+  "accident_location_address": "South State Street, Douglas, Chicago, South Chicago Township, Cook County, Illinois, 60616, United States (GPS: 41.84494, -87.62665)",
+  "Tesla_model": "Model 3 Long Range",
+  "VIN_number": "5YJ3E1EA7JF123456",
+  "license_plate_number": "IL 93Z882",
+  "insurance_company_name": "Tesla Insurance",
+  "insurance_policy_number": "TI-882934",
   "is_vehicle_operable": "No",
-  "damage_description": "I have a flat tire - front-left"
+  "damage_description": "Dead battery"
 }
