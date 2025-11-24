@@ -72,7 +72,7 @@ The project has three cooperating pieces. Run them in separate terminals (or use
 1. MCP server (towing intake toolset)
 
     ```bash
-	 python src/mac_servers/towing_server.py
+	 python src/mcp_servers/towing_server.py
      ```
 
 	 This starts an HTTP MCP server on `127.0.0.1:8765` (the Streamlit UI and
@@ -80,10 +80,10 @@ The project has three cooperating pieces. Run them in separate terminals (or use
 
 2. Backend FastAPI app
 
-	 From the project root run:
+	 From the project root go to src directory and run:
 
      ```bash
-	 uvicorn src.app.main:app --reload --host 127.0.0.1 --port 8000
+	 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
      ```
 
 	 This exposes the small API the Streamlit app calls:
@@ -92,17 +92,26 @@ The project has three cooperating pieces. Run them in separate terminals (or use
 	 - POST `/agent/invoke` — invoke the agent with a user message + context.
 	 - POST `/agent/invoke_towing_guide` — request a towing guide summary.
 
-3. Streamlit UI
+3. Streamlit UI (If you want to see the new UI run Reflex instead)
 
-	 From the project root run:
+	 From the project root go to src directory and run:
 
      ```bash
-	 streamlit run src/streamlit_app/main.py
+	 streamlit run streamlit_app/main.py
      ```
 
 	 Open the URL printed by Streamlit (usually `http://localhost:8501`) and you
 	 should see the Tesla Towing Assistant UI. The UI will call the FastAPI backend
 	 and the MCP server.
+
+4. Reflex
+   
+   From the project root go to the Reflex Folder directory and run:
+   
+   ```bash
+	 reflex run
+   ```
+   And you should see the notification as app is running in the terminal along with the url it's running on.
 
 Tips and troubleshooting
 ------------------------
