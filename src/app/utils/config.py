@@ -1,50 +1,33 @@
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
-from typing import Optional
+import pydantic_settings
 
-# --------------------------------------------------
-# ✅ Load .env from project root automatically
-# --------------------------------------------------
+class Settings(pydantic_settings.BaseSettings):
+    # Azure OpenAI
+    OPENAI_API_KEY: str 
+    ENDPOINT: str
+    API_VERSION: str 
+    DEPLOYMENT_NAME: str 
+    MODEL_NAME: str 
+    
+    # Azure Speech
+    AZURE_SPEECH_KEY: str 
+    AZURE_SPEECH_REGION: str
 
-# Locate project root (CCCIS_FRIA-main-2/.env)
-CURRENT_FILE = Path(__file__).resolve()
-PROJECT_ROOT = CURRENT_FILE.parent.parent.parent.parent  # go up from utils → app → src → project root
-ENV_PATH = PROJECT_ROOT / ".env"
+    # MCP Server
+    MCP_URL: str
+    MCP_PORT: str 
 
-# Load the .env file explicitly
-if ENV_PATH.exists():
-    load_dotenv(ENV_PATH)
-    print(f"✅ [config.py] Loaded .env from: {ENV_PATH}")
-else:
-    print(f"⚠️ [config.py] .env file not found at: {ENV_PATH}")
-
-# --------------------------------------------------
-# ✅ Settings class for application configuration
-# --------------------------------------------------
-
-class Settings(BaseSettings):
-    ENDPOINT: Optional[str] = None
-    API_VERSION: Optional[str] = None
-    MODEL_NAME: Optional[str] = None
-    DEPLOYMENT_NAME: Optional[str] = None
-    OPENAI_API_KEY: Optional[str] = None
-    MCP_URL: Optional[str] = None
-    STREAMLIT_ENV: Optional[str] = None
-
+    # Backend URL
+    BACKEND_URL: str 
     class Config:
-        env_file = str(ENV_PATH)
+        env_file = ".env"
         env_file_encoding = "utf-8"
-        extra = "allow"
-        case_sensitive = True
-
-# --------------------------------------------------
-# ✅ Initialize global settings
-# --------------------------------------------------
 
 settings = Settings()
 
-# Optional debug output to confirm load success
-print(f"🔑 [config.py] OPENAI_API_KEY found: {'YES' if settings.OPENAI_API_KEY else 'NO'}")
-print(f"🌐 [config.py] Endpoint mode: {'Azure' if settings.ENDPOINT else 'OpenAI'}")
+print("-----------------------------------------------------------")
+print("[config] .env loaded from:", ENV_PATH)
+print(f"[config] OPENAI_API_KEY: {'YES' if settings.OPENAI_API_KEY else 'NO'}")
+print(f"[config] Azure Endpoint: {settings.ENDPOINT}")
+print(f"[config] API Version: {settings.API_VERSION}")
+print(f"[config] Deployment Name: {settings.DEPLOYMENT_NAME}")
+print("-----------------------------------------------------------")

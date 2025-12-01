@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 class FriaAgentInvokeSchema(BaseModel):
     session_id: uuid.UUID
     user_message: str
-    chat_history: List[Dict[str, str]]  
+    chat_history: List[Dict[str, str]]  # [{"role": "...", "content": "..."}]
     current_data: Dict[str, Any]
 
 class TowingGuideInvokeSchema(BaseModel):

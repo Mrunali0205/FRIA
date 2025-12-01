@@ -1,19 +1,25 @@
-# Core dependencies
-fastmcp
-reflex
-streamlit
-python-dotenv
-openai
+# FastAPI core
 fastapi
 uvicorn[standard]
+
+# Environment + config
+python-dotenv
+pydantic
 pydantic-settings
+
+# LLM + Azure OpenAI
+openai
+azure-cognitiveservices-speech
+
+# Templates
 Jinja2
+
+# Networking + utilities
+requests
 httpx
 
-# Geo-location & mapping
+# Geolocation
 geopy
-folium
-streamlit-folium
 
-# Additional utilities
-requests
+# MCP (keep only if you're using your MCP server)
+fastmcp

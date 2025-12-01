@@ -3,6 +3,7 @@ from typing import Optional
 from geopy.geocoders import Nominatim
 
 geolocator = Nominatim(user_agent="tesla_tow_app")
+
 # Reverse Geocoding
 def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     """Convert coordinates → address."""
@@ -12,6 +13,7 @@ def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     except Exception:
         return None
 
+
 # Forward Geocoding (autocomplete)
 def search_address(query: str):
     """Return top 5 addresses matching search query."""
@@ -19,6 +21,7 @@ def search_address(query: str):
         results = geolocator.geocode(query, exactly_one=False, language="en", limit=5)
         if not results:
             return []
+        
         return [
             {
                 "address": r.address,
@@ -29,6 +32,8 @@ def search_address(query: str):
         ]
     except Exception:
         return []
+
+
 # Device / IP Geolocation
 def ip_geolocation():
     """Fallback IP-based approximate location."""
