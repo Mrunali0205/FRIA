@@ -1,4 +1,5 @@
 import json
+import uuid
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from app.infrastructure.clients.azure_openai_client import call_openai
@@ -69,6 +70,7 @@ def extract_fields(text):
 
 
 def invoke_agent(
+    session_id: uuid.UUID,
     user_message: str,
     chat_history: list | None = None,
     current_data: dict | None = None,
@@ -106,8 +108,8 @@ def invoke_agent(
         mcp.call("set_field", {"field": field, "value": value})
 
     # 5. Get updated form and required-field status
-    _ = mcp.call("get_fields", {})["result"]
-    missing = mcp.call("list_required_fields", {})["result"]
+    _ = mcp.call("get_fields", {}, session_id=str(session_id))["result"]
+    missing = mcp.call("list_required_fields", {}, session_id=str(session_id))["result"]
 
     # 6. Next question logic per spec
     if not missing:

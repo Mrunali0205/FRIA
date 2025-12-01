@@ -6,11 +6,12 @@ class MCPClient:
     def __init__(self, base_url="http://127.0.0.1:8765/mcp"):
         self.base_url = base_url
 
-    def call(self, method: str, params: dict):
+    def call(self, method: str, params: dict, session_id: str | None = None):
         payload = {
             "method": method,
             "params": params,
             "id": "123",
+            "session_id" : session_id,
             "jsonrpc": "2.0"
         }
         headers = {

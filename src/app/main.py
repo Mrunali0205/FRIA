@@ -47,6 +47,7 @@ def start_agent_session():
 @app.post("/agent/invoke")
 def agent_invoke(req: FriaAgentInvokeSchema):
     return invoke_agent(
+        session_id=req.session_id,
         user_message=req.user_message,
         chat_history=req.chat_history,
         current_data=req.current_data,

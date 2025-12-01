@@ -10,7 +10,7 @@ def call_openai(prompt: str) -> str:
     """
 
     client = AzureOpenAI(
-        api_key=settings.OPENAI_API_KEY,
+        api_key=settings.AZURE_OPENAI_API_KEY,
         azure_endpoint=settings.ENDPOINT,
         api_version=settings.API_VERSION
     )
