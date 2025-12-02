@@ -1,0 +1,15 @@
+{
+    "full_name": "Sarah Chen",
+    "contact_number": "+1-312-555-2098",
+    "email_address": "sarah.chen@tesla.com",
+    "Tesla_model": "Model 3 Long Range",
+    "VIN_number": "5YJ3E1EA7JF123456",
+    "license_plate": "IL 93Z882",
+    "vehicle_color": "White",
+    "accident_location_address": null,
+    "is_vehicle_operable": null,
+    "damage_description": null,
+    "reason_for_towing": null,
+    "insurance_company_name": "Tesla Insurance",
+    "insurance_policy_number": "TI-882934"
+}
