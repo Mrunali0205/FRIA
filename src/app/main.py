@@ -1,9 +1,11 @@
 import uuid
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.agent.MruNav_agent import agent
 from pydantic import BaseModel
 
 from app.agent.fria_agent import invoke_agent
+from langgraph.types import Command
 from app.services.gps_location_service import reverse_geocode
 from app.apis.schemas.fria_agent_schema import (
     FriaAgentInvokeSchema, 
@@ -37,21 +39,45 @@ class GeoRequest(BaseModel):
 # START AGENT SESSION
 # ---------------------------
 @app.get("/agent/start")
-def start_agent_session():
+async def start_agent_session():
     session_id = str(uuid.uuid4())
-    return {"session_id": session_id}
+    thread_config = {
+        "configurable" : {
+            "thread_id": session_id
+        }
+    }
+    final_state = await agent.ainvoke(
+         {
+        "user_name" : "John Doe",
+         },
+         config=thread_config
+    )
+    last_message = final_state['messages'][-1]
+    return {
+        "session_id": session_id,
+        "last_message": last_message.content
+    }
 
 # ---------------------------
 # MAIN AGENT INVOKE ENDPOINT
 # ---------------------------
-@app.post("/agent/invoke")
-def agent_invoke(req: FriaAgentInvokeSchema):
-    return invoke_agent(
-        session_id=req.session_id,
-        user_message=req.user_message,
-        chat_history=req.chat_history,
-        current_data=req.current_data,
+@app.post("/agent/continue")
+async def agent_invoke(req: FriaAgentInvokeSchema):
+    thread_config = {
+        "configurable" : {
+            "thread_id": req.session_id
+        }
+    }
+    final_state = await agent.ainvoke(
+        Command(resume=
+                {
+                    "user_message": req.user_message,
+                }),
+         config=thread_config
     )
+    last_message = final_state['messages'][-1]
+
+    return  {"last_message": last_message.content}
 
 # ---------------------------
 # TOWING GUIDE ENDPOINT
