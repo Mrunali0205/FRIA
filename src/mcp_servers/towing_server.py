@@ -3,6 +3,7 @@ import logging
 from fastmcp import FastMCP
 from typing import Optional, Dict, Any
 
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,9 @@ class TowingServer(FastMCP):
         # REQUIRED FIELDS MATCHES YOUR CLIENT + NEXTJS UI
         self.required_fields = required_fields["required_fields"]
         self.default_data = default_data
-        self.current_data = default_data.copy() if current_data is None else current_data
+        self.current_data = (
+            default_data.copy() if current_data is None else current_data
+        )
 
         # Register MCP tools
         self.tool(self.get_fields)
@@ -73,6 +76,7 @@ class TowingServer(FastMCP):
         """
         return {"required_fields": self.required_fields}
 
+# FIELD DEFINITIONS
 
 # REQUIRED FIELDS 
 

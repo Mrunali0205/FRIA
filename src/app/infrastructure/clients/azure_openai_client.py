@@ -21,6 +21,7 @@ class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
                 model=self.model,  
                 messages=messages
             )
+
             message = response.choices[0].message.content
             if not message or not message.strip():
                 raise ValueError("Empty response from LLM")

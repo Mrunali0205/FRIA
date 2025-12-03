@@ -46,6 +46,8 @@ async def render_prompt(template_name: str, input_data: dict) -> str:
     return template.render(**input_data)
 
 
+# NODES
+
 def extract_json_from_llm(text: str):
     match = re.search(r"\{.*\}", text, re.DOTALL)
     if not match:
