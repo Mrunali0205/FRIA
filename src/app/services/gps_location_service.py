@@ -1,27 +1,37 @@
 import requests
-from typing import Optional
+from typing import Optional, List, Dict
 from geopy.geocoders import Nominatim
 
+# Geopy client
 geolocator = Nominatim(user_agent="tesla_tow_app")
 
 # Reverse Geocoding
 def reverse_geocode(lat: float, lon: float) -> Optional[str]:
-    """Convert coordinates → address."""
+    """
+    Convert latitude/longitude → human-readable address.
+    Returns None if lookup fails.
+    """
     try:
         location = geolocator.reverse((lat, lon), language="en")
         return location.address if location else None
     except Exception:
         return None
 
-
-# Forward Geocoding (autocomplete)
-def search_address(query: str):
-    """Return top 5 addresses matching search query."""
+# Forward Search / Autocomplete
+def search_address(query: str) -> List[Dict]:
+    """
+    Query partial address 
+    """
     try:
-        results = geolocator.geocode(query, exactly_one=False, language="en", limit=5)
+        results = geolocator.geocode(
+            query,
+            exactly_one=False,
+            language="en",
+            limit=5
+        )
         if not results:
             return []
-        
+
         return [
             {
                 "address": r.address,
@@ -33,14 +43,16 @@ def search_address(query: str):
     except Exception:
         return []
 
-
-# Device / IP Geolocation
-def ip_geolocation():
-    """Fallback IP-based approximate location."""
+# IP Geolocation (Fallback)
+def ip_geolocation() -> tuple[Optional[float], Optional[float]]:
     try:
-        res = requests.get("https://ipinfo.io/json")
-        loc = res.json().get("loc", "")
-        lat, lon = loc.split(",")
-        return float(lat), float(lon)
-    except:
+        res = requests.get("https://ipinfo.io/json", timeout=5)
+        loc = res.json().get("loc")
+        if not loc:
+            return None, None
+
+        lat_str, lon_str = loc.split(",")
+        return float(lat_str), float(lon_str)
+
+    except Exception:
         return None, None

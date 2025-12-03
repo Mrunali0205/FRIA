@@ -2,7 +2,7 @@ import json
 import uuid
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
-from app.infrastructure.clients.azure_openai_client import call_openai
+from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
 from app.utils.mcp_client import MCPClient
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "prompt_management"
