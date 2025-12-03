@@ -1,12 +1,13 @@
 import uuid
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 
 class FriaAgentInvokeSchema(BaseModel):
     session_id: uuid.UUID
     user_message: str
-    chat_history: List[Dict[str, str]]  # [{"role": "...", "content": "..."}]
-    current_data: Dict[str, Any]
+    chat_history: List[Dict[str, str]] = Field(default_factory=list)
+    current_data: Dict[str, Any] = Field(default_factory=dict)
+
 
 class TowingGuideInvokeSchema(BaseModel):
     session_id: uuid.UUID

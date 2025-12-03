@@ -1,30 +1,37 @@
-import os
-from openai import AzureOpenAI
-from app.utils.config import settings
+import openai
+from openai import AsyncAzureOpenAI, AsyncOpenAI
+from src.app.utils.config import settings   # ← FIXED import
 
 
-def call_openai(prompt: str) -> str:
-    """
-    Call Azure OpenAI with a single system prompt.
-    Returns the assistant's text response.
-    """
+class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
+    def __init__(self):
+        # Azure mode
+        if settings.ENDPOINT:
+            super().__init__(
+                api_key=settings.AZURE_OPENAI_API_KEY,
+                azure_endpoint=settings.ENDPOINT,
+                api_version=settings.API_VERSION,
+            )
+            self.model = settings.DEPLOYMENT_NAME 
 
-    client = AzureOpenAI(
-        api_key=settings.AZURE_OPENAI_API_KEY,
-        azure_endpoint=settings.ENDPOINT,
-        api_version=settings.API_VERSION
-    )
+        
+        else:
+            super().__init__(api_key=settings.AZURE_OPENAI_API_KEY)
+            self.model = settings.MODEL_NAME
 
-    try:
-        response = client.chat.completions.create(
-            model=settings.DEPLOYMENT_NAME,
-            messages=[
-                {"role": "system", "content": prompt}
-            ]
-        )
+    async def get_chat_response(self, messages: list[dict]) -> str:
+        try:
+            response = await self.chat.completions.create(
+                model=self.model,
+                messages=messages
+            )
 
-        return response.choices[0].message.content.strip()
+            message = response.choices[0].message.content
 
-    except Exception as e:
-        print("OPENAI ERROR:", e)
-        return "{}"
+            if not message or not message.strip():
+                raise ValueError("Empty response from LLM")
+
+            return message
+
+        except openai.OpenAIError as e:
+            return f"[ERROR] Chat completion failed: {e}"
