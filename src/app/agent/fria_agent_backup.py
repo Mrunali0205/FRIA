@@ -6,6 +6,9 @@ from app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
 llm = AzureOpenAIClient()
 from app.utils.mcp_client import MCPClient
 
+
+llm = AzureOpenAIClient()
+
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "prompt_management"
 jinja_env = Environment(
     loader=FileSystemLoader(str(TEMPLATE_DIR)),
