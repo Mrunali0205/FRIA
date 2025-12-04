@@ -11,9 +11,13 @@ from app.apis.schemas.fria_agent_schema import (
     FriaAgentInvokeSchema, 
     TowingGuideInvokeSchema
 )
-
+from fastapi import File, UploadFile
+import tempfile
+import shutil
 # NEW: audio service import
-from app.services.audio_transcription_service import transcribe_mic
+from src.app.services.audio_transcription_service import transcribe_audio_file
+
+
 
 app = FastAPI()
 
@@ -110,10 +114,16 @@ def reverse_geocode_location(req: GeoRequest):
 # ---------------------------
 # AUDIO TRANSCRIPTION ENDPOINT
 # ---------------------------
+
 @app.post("/agent/transcribe")
-def transcribe_audio():
-    """
-    Trigger microphone-based audio transcription.
-    """
-    text = transcribe_mic()
+async def transcribe_audio(file: UploadFile = File(...)):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+    text = transcribe_audio_file(tmp_path)
+
     return {"transcript": text}
+
+
+
+
