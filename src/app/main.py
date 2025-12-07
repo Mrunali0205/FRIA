@@ -1,23 +1,18 @@
 import uuid
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from app.agent.MruNav_agent import agent
-from pydantic import BaseModel
 
-from app.agent.fria_agent import invoke_agent
+from src.app.agent.MruNav_agent import agent
+from src.app.services.gps_location_service import reverse_geocode
+from src.app.apis.schemas.fria_agent_schema import FriaAgentInvokeSchema, TowingGuideInvokeSchema
+from src.app.services.audio_transcription_service import transcribe_audio_file
+from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
+
 from langgraph.types import Command
-from app.services.gps_location_service import reverse_geocode
-from app.apis.schemas.fria_agent_schema import (
-    FriaAgentInvokeSchema, 
-    TowingGuideInvokeSchema
-)
-from fastapi import File, UploadFile
+from pydantic import BaseModel
 import tempfile
 import shutil
-# NEW: audio service import
-from src.app.services.audio_transcription_service import transcribe_audio_file
-
-
+from fastapi import File, UploadFile
 
 app = FastAPI()
 
@@ -32,70 +27,78 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------
+
 # GEOCODE MODEL
-# ---------------------------
 class GeoRequest(BaseModel):
     lat: float
     lon: float
 
-# ---------------------------
+
 # START AGENT SESSION
-# ---------------------------
 @app.get("/agent/start")
 async def start_agent_session():
     session_id = str(uuid.uuid4())
     thread_config = {
-        "configurable" : {
+        "configurable": {
             "thread_id": session_id
         }
     }
     final_state = await agent.ainvoke(
-         {
-        "user_name" : "John Doe",
-         },
-         config=thread_config
+        {
+            "user_name": "John Doe",   
+        },
+        config=thread_config
     )
-    last_message = final_state['messages'][-1]
+    last_message = final_state["messages"][-1]
     return {
         "session_id": session_id,
-        "last_message": last_message.content
+        "last_message": last_message.content,
+        "done": final_state.get("done", False)
     }
 
-# ---------------------------
+
 # MAIN AGENT INVOKE ENDPOINT
-# ---------------------------
 @app.post("/agent/continue")
 async def agent_invoke(req: FriaAgentInvokeSchema):
     thread_config = {
-        "configurable" : {
+        "configurable": {
             "thread_id": req.session_id
         }
     }
+    resume_payload = {
+        "user_message": req.user_message or "",
+    }
+
+    if req.lat is not None and req.lon is not None:
+        resume_payload["lat"] = req.lat
+        resume_payload["lon"] = req.lon
+
+    if req.audio_transcript is not None:
+        resume_payload["audio_transcript"] = req.audio_transcript
+
     final_state = await agent.ainvoke(
-        Command(resume=
-                {
-                    "user_message": req.user_message,
-                }),
-         config=thread_config
+        Command(resume=resume_payload),
+        config=thread_config
     )
-    last_message = final_state['messages'][-1]
 
-    return  {"last_message": last_message.content}
+    last_message = final_state["messages"][-1]
 
-# ---------------------------
+    return {
+        "last_message": last_message.content,
+        "done": final_state.get("done", False)
+    }
+
+
+
 # TOWING GUIDE ENDPOINT
-# ---------------------------
-@app.post("/agent/invoke_towing_guide")
-def agent_towing_guide(req: TowingGuideInvokeSchema):
-    response = invoke_agent(
-        towing_instruction=req.towing_instruction
-    )
-    return {"session_id": req.session_id, "response": response}
+#@app.post("/agent/invoke_towing_guide")
+#def agent_towing_guide(req: TowingGuideInvokeSchema):
+    #response = invoke_agent(
+        #towing_instruction=req.towing_instruction
+    #)
+    #return {"session_id": req.session_id, "response": response}
 
-# ---------------------------
 # REVERSE GEOCODING
-# ---------------------------
 @app.post("/location/reverse-geocode")
 def reverse_geocode_location(req: GeoRequest):
     try:
@@ -111,10 +114,8 @@ def reverse_geocode_location(req: GeoRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-# ---------------------------
-# AUDIO TRANSCRIPTION ENDPOINT
-# ---------------------------
 
+# AUDIO TRANSCRIPTION ENDPOINT
 @app.post("/agent/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     with tempfile.NamedTemporaryFile(delete=False, suffix=file.filename) as tmp:

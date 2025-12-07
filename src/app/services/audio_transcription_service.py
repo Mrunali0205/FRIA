@@ -1,5 +1,5 @@
 import azure.cognitiveservices.speech as speechsdk
-from app.utils.config import settings
+from src.app.utils.config import settings
 
 SPEECH_KEY = settings.AZURE_SPEECH_KEY if hasattr(settings, "AZURE_SPEECH_KEY") else None
 SPEECH_REGION = settings.AZURE_SPEECH_REGION if hasattr(settings, "AZURE_SPEECH_REGION") else None
