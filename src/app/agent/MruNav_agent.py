@@ -14,9 +14,7 @@ from jinja2 import Environment, FileSystemLoader
 from src.app.services.gps_location_service import reverse_geocode
 from src.mcp_servers.towing_client import TowingMCPClient
 
-# -----------------------------
 # INIT
-# -----------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
