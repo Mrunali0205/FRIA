@@ -62,10 +62,8 @@ def extract_json_from_llm(text: str):
     except Exception:
         return None
 
-
-# -----------------------------
 # NODES
-# -----------------------------
+
 async def greeting(state: MruNavAgent) -> MruNavAgent:
     if "messages" not in state:
         state["messages"] = []
@@ -230,11 +228,8 @@ async def check_done(state: MruNavAgent) -> MruNavAgent:
 
     return state
 
-
-
-# -----------------------------
 # GRAPH
-# -----------------------------
+
 builder = StateGraph(MruNavAgent)
 
 builder.add_node("greeting", greeting)
