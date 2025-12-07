@@ -16,10 +16,9 @@ from fastapi import File, UploadFile
 
 # Geocode model (only needed for the plain reverse-geocode endpoint)
 from pydantic import BaseModel
-class GeoRequest(BaseModel):
-    lat: float
-    lon: float
-
+import tempfile
+import shutil
+from fastapi import File, UploadFile
 
 # CREATE FASTAPI APP
 app = FastAPI()
@@ -108,14 +107,19 @@ async def agent_invoke(req: FriaAgentInvokeSchema):
 # REVERSE GEOCODING
 @app.post("/location/reverse-geocode")
 def reverse_geocode_location(req: GeoRequest):
-    from app.services.gps_location_service import reverse_geocode
-    address = reverse_geocode(req.lat, req.lon)
-    return {
-        "success": True,
-        "address": address,
-        "lat": req.lat,
-        "lon": req.lon
-    }
+    try:
+        address = reverse_geocode(req.lat, req.lon)
+        if address:
+            return {
+                "success": True,
+                "address": address,
+                "lat": req.lat,
+                "lon": req.lon
+            }
+        return {"success": False, "error": "Could not reverse geocode"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 
 
 # AUDIO TRANSCRIPTION ENDPOINT
