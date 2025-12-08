@@ -1,5 +1,5 @@
 import uuid
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 # LangGraph agent
@@ -105,3 +105,7 @@ def reverse_geocode_location(req: GeoRequest):
 def transcribe_audio():
     text = transcribe_mic()
     return {"transcript": text}
+
+
+
+

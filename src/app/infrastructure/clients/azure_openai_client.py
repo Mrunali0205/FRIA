@@ -5,7 +5,6 @@ from src.app.utils.config import settings   # ← FIXED import
 
 class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
     def __init__(self):
-        # Azure mode
         if settings.ENDPOINT:
             super().__init__(
                 api_key=settings.AZURE_OPENAI_API_KEY,
@@ -18,20 +17,16 @@ class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
         else:
             super().__init__(api_key=settings.AZURE_OPENAI_API_KEY)
             self.model = settings.MODEL_NAME
-
     async def get_chat_response(self, messages: list[dict]) -> str:
         try:
             response = await self.chat.completions.create(
-                model=self.model,
+                model=self.model,  
                 messages=messages
             )
 
             message = response.choices[0].message.content
-
             if not message or not message.strip():
                 raise ValueError("Empty response from LLM")
-
             return message
-
         except openai.OpenAIError as e:
             return f"[ERROR] Chat completion failed: {e}"

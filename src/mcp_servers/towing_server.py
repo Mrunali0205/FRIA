@@ -1,7 +1,6 @@
 import json
 import logging
 from fastmcp import FastMCP
-from pathlib import Path
 from typing import Optional, Dict, Any
 
 
@@ -30,6 +29,7 @@ class TowingServer(FastMCP):
             default_data.copy() if current_data is None else current_data
         )
 
+        # Register MCP tools
         self.tool(self.get_fields)
         self.tool(self.set_field)
         self.tool(self.reset_data)
