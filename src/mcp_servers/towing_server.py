@@ -8,8 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class TowingServer(FastMCP):
-    """MCP Server for Towing Intake Form Management."""
-
     def __init__(
         self,
         required_fields: Dict[str, list],
@@ -20,7 +18,6 @@ class TowingServer(FastMCP):
             name="towing-intake",
             instructions="MCP server to manage towing intake form data."
         )
-
         # REQUIRED FIELDS MATCHES YOUR CLIENT + NEXTJS UI
         self.required_fields = required_fields["required_fields"]
         self.default_data = default_data
@@ -32,9 +29,7 @@ class TowingServer(FastMCP):
         self.tool(self.reset_data)
         self.tool(self.list_required_fields)
 
-    # -------------------------------------------------------
     # TOOLS
-    # -------------------------------------------------------
 
     def get_fields(self):
         """Return all current form fields."""
@@ -79,9 +74,7 @@ class TowingServer(FastMCP):
         return {"required_fields": self.required_fields}
 
 
-# -------------------------------------------------------
-# REQUIRED FIELDS — EXACTLY AS YOUR UI EXPECTS
-# -------------------------------------------------------
+# REQUIRED FIELDS 
 
 REQUIRED_FIELDS = [
     "full_name",
@@ -101,10 +94,7 @@ REQUIRED_FIELDS = [
     "insurance_company_name",
     "insurance_policy_number",
 ]
-
-# -------------------------------------------------------
 # DEFAULT (PREFILLED) VALUES
-# -------------------------------------------------------
 
 DEFAULT_DATA = {
     # CUSTOMER INFO
@@ -130,9 +120,7 @@ DEFAULT_DATA = {
 }
 
 
-# -------------------------------------------------------
 # RUN SERVER
-# -------------------------------------------------------
 if __name__ == "__main__":
     mcp = TowingServer(
         required_fields={"required_fields": REQUIRED_FIELDS},

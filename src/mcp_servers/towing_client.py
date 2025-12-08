@@ -4,19 +4,9 @@ from fastmcp.client.transports import StreamableHttpTransport
 
 
 class TowingMCPClient:
-    """
-    Thin wrapper around FastMCP client to call the towing-intake MCP server.
-
-    This matches your earlier working version.
-    """
-
     def __init__(self, url: str = "http://127.0.0.1:8765/mcp"):
         self.url = url
-
     async def _call(self, tool: str, args: dict):
-        """
-        Internal wrapper for calling MCP tools.
-        """
         transport = StreamableHttpTransport(self.url)
 
         async with Client(transport=transport) as client:

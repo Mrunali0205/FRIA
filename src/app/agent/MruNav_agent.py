@@ -25,10 +25,7 @@ base_dir = os.path.dirname(os.path.dirname(__file__))
 prompt_templates_path = os.path.join(base_dir, "prompt_management")
 load_templates = Environment(loader=FileSystemLoader(prompt_templates_path))
 
-
-# -----------------------------
 # STATE
-# -----------------------------
 class MruNavAgent(TypedDict, total=False):
     user_name: str
     user_message: Optional[str]
@@ -43,9 +40,7 @@ class MruNavAgent(TypedDict, total=False):
     messages: List[BaseMessage]
 
 
-# -----------------------------
 # HELPERS
-# -----------------------------
 async def render_prompt(template_name: str, input_data: dict) -> str:
     template = load_templates.get_template(template_name)
     return template.render(**input_data)
