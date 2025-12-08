@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from langgraph.types import Command
 from pydantic import BaseModel
+from typing import Optional
 
 # LangGraph agent
 from src.app.agent.MruNav_agent import agent
@@ -10,8 +11,8 @@ from src.app.agent.MruNav_agent import agent
 # Schemas
 from src.app.apis.schemas.fria_agent_schema import (
     FriaAgentInvokeSchema,
-    TowingGuideInvokeSchema,
 )
+
 # GPS router
 from src.app.routers.location_routers import router as location_router
 
@@ -19,16 +20,11 @@ from src.app.routers.location_routers import router as location_router
 from src.app.services.audio_transcription_service import transcribe_mic
 
 
-class GeoRequest(BaseModel):
-    lat: float
-    lon: float
-
-
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,14 +33,22 @@ app.add_middleware(
 app.include_router(location_router)
 
 
+class GeoRequest(BaseModel):
+    lat: float
+    lon: float
+
+
 @app.get("/agent/start")
 async def start_agent_session():
     session_id = str(uuid.uuid4())
+
     final_state = await agent.ainvoke(
-        {"user_name": "John Doe"},
+        {"user_name": "John Doe"},   # Could be dynamic later
         config={"configurable": {"thread_id": session_id}},
     )
+
     last_message = final_state["messages"][-1].content
+
     return {
         "session_id": session_id,
         "last_message": last_message,
@@ -52,7 +56,7 @@ async def start_agent_session():
 
 
 @app.post("/agent/continue")
-async def agent_invoke(req: FriaAgentInvokeSchema):
+async def agent_continue(req: FriaAgentInvokeSchema):
 
     resume_payload = {}
 
@@ -72,6 +76,7 @@ async def agent_invoke(req: FriaAgentInvokeSchema):
     )
 
     last_message = final_state["messages"][-1].content
+
     return {"last_message": last_message}
 
 
@@ -81,12 +86,14 @@ def reverse_geocode_location(req: GeoRequest):
     from src.app.services.gps_location_service import reverse_geocode
 
     address = reverse_geocode(req.lat, req.lon)
+
     return {
         "success": True,
         "address": address,
         "lat": req.lat,
         "lon": req.lon,
     }
+
 
 
 @app.post("/agent/transcribe")
