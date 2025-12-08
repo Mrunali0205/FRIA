@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional, List
 
-from app.services.gps_location_service import (
+from src.app.services.gps_location_service import (
     reverse_geocode,
     search_address,
     ip_geolocation,

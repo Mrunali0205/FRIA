@@ -1,10 +1,14 @@
 import uuid
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
 
 class FriaAgentInvokeSchema(BaseModel):
     session_id: uuid.UUID
-    user_message: str
+    user_message: Optional[str] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    audio_transcript: Optional[str] = None
     chat_history: List[Dict[str, str]] = Field(default_factory=list)
     current_data: Dict[str, Any] = Field(default_factory=dict)
 
