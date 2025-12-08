@@ -1,6 +1,8 @@
 import openai
 from openai import AsyncAzureOpenAI, AsyncOpenAI
-from src.app.utils.config import settings
+from src.app.utils.config import settings   # ← FIXED import
+
+
 class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
     def __init__(self):
         if settings.ENDPOINT:
@@ -9,11 +11,11 @@ class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
                 azure_endpoint=settings.ENDPOINT,
                 api_version=settings.API_VERSION,
             )
-            self.model = settings.MODEL_NAME
+            self.model = settings.DEPLOYMENT_NAME 
+
+        
         else:
-            super().__init__(
-                api_key=settings.AZURE_OPENAI_API_KEY
-            )
+            super().__init__(api_key=settings.AZURE_OPENAI_API_KEY)
             self.model = settings.MODEL_NAME
     async def get_chat_response(self, messages: list[dict]) -> str:
         try:
