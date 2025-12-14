@@ -23,3 +23,6 @@ geopy
 
 # MCP (keep only if you're using your MCP server)
 fastmcp
+
+#database
+psycopg2-binary sqlalchemy

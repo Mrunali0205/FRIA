@@ -3,20 +3,19 @@ import uuid
 import logging
 import json
 import re
-from typing import TypedDict, List, Optional
+from typing import TypedDict, Optional, List, Literal, Dict, Any
 
-from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
 from langgraph.types import interrupt
 from langgraph.graph import StateGraph, END
-from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from langgraph.checkpoint.memory import InMemorySaver
+from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from jinja2 import Environment, FileSystemLoader
 
+from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
 from src.app.services.gps_location_service import reverse_geocode
 from src.mcp_servers.towing_client import TowingMCPClient
 
 
-# INIT
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,289 +24,289 @@ mcp_client = TowingMCPClient()
 
 base_dir = os.path.dirname(os.path.dirname(__file__))
 prompt_templates_path = os.path.join(base_dir, "prompt_management")
-load_templates = Environment(loader=FileSystemLoader(prompt_templates_path))
+env = Environment(loader=FileSystemLoader(prompt_templates_path))
+
+
+async def render_prompt(template_name: str, data: dict) -> str:
+    return env.get_template(template_name).render(**data)
+
 
 # STATE
+Lane = Literal[
+    "SAFETY",
+    "INCIDENT",
+    "LOCATION",
+    "OPERABILITY",
+    "TOW_REASON",
+    "FINALIZE",
+]
+
 
 class MruNavAgent(TypedDict, total=False):
     user_name: str
+    messages: List[BaseMessage]
+    done: bool
+
+    # inbound
     user_message: Optional[str]
-    user_state: Optional[str]
-
-    accident_details: Optional[str]
-    vehicle_operable: Optional[str]
-
+    audio_transcript: Optional[str]
     lat: Optional[float]
     lon: Optional[float]
+
+    # routing
+    lane: Lane
+    safety_confirmed: Optional[bool]
+
+    # collected slots
+    accident_details: Optional[str]
     accident_location_address: Optional[str]
-
-    audio_transcript: Optional[str]
-
-    done: Optional[bool]
-    messages: List[BaseMessage]
-
-# HELPERS
-
-async def render_prompt(template_name: str, input_data: dict) -> str:
-    template = load_templates.get_template(template_name)
-    return template.render(**input_data)
-
-def extract_json_from_llm(text: str) -> dict | None:
-    try:
-        match = re.search(r"\{[\s\S]*\}", text)
-        if not match:
-            return None
-        return json.loads(match.group())
-    except Exception:
-        return None
-# NODES
-
-async def ask_for_user_status(state: MruNavAgent) -> MruNavAgent:
-    await mcp_client.reset_data() 
-
-    state.setdefault("messages", [])
-
-    user_name = state.get("user_name", "there")
-
-    state["messages"].append(
-        AIMessage(
-            content=f"Hello {user_name}, I’m here from the CCC First Responder team. Are you safe right now?"
-        )
-    )
-
-    state["user_state"] = "awaiting_safety_confirmation"
-    state["done"] = False
-    return state
+    vehicle_operable: Optional[Literal["yes", "no"]]
+    reason_for_towing: Optional[str]
 
 
-async def user_response(state: MruNavAgent) -> MruNavAgent:
-    incoming = interrupt("Waiting for user response...")
-
-    if incoming.get("user_message"):
-        text = str(incoming.get("user_message"))
-        state["user_message"] = text
-        state.setdefault("messages", []).append(HumanMessage(content=text))
-
-    if incoming.get("lat") is not None and incoming.get("lon") is not None:
-        state["lat"] = incoming["lat"]
-        state["lon"] = incoming["lon"]
-
-    if incoming.get("audio_transcript"):
-        state["audio_transcript"] = incoming["audio_transcript"]
-
-    return state
+YES = {"yes", "yeah", "yep", "safe", "i am safe"}
+NO = {"no", "not safe", "unsafe"}
 
 
-async def analyze_user_status(state: MruNavAgent) -> MruNavAgent:
-    logger.info("Analyzing emergency seriousness")
+def norm(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower())
 
-    last_content = state.get("user_message")
-    if not last_content:
-        return state
 
+def parse_yes_no(text: str) -> Optional[bool]:
+    t = norm(text)
+    if any(x in t for x in YES):
+        return True
+    if any(x in t for x in NO):
+        return False
+    return None
+
+
+def looks_like_incident(text: str) -> bool:
+    t = norm(text)
+    return len(t.split()) >= 3 and parse_yes_no(t) is None
+
+
+def looks_like_address(text: str) -> bool:
+    t = norm(text)
+    tokens = ["street", "st", "road", "rd", "ave", "avenue", "blvd", "drive", "dr", "near"]
+    return any(tok in t for tok in tokens) and len(t) > 8
+
+async def llm_validate_tow_reason(text: str) -> bool:
     prompt = await render_prompt(
-        "analyse_user_status.j2",
-        {"user_input": last_content}
+        "tow_reason_validator.j2",
+        {"user_input": text}
     )
 
     response = await llm.get_chat_response(
         messages=[{"role": "system", "content": prompt}]
     )
 
-    label = response.strip().lower()
+    try:
+        # Extract JSON if wrapped in text
+        start = response.find("{")
+        end = response.rfind("}") + 1
+        if start == -1 or end == -1:
+            return False
 
-    if label == "serious":
-        state["done"] = True
-        state["messages"].append(
-            AIMessage(
-                content="This may be an emergency. Please call local emergency services immediately."
-            )
-        )
-    else:
-        state["messages"].append(
-            AIMessage(content="Thanks — I’ll gather a few details to help you.")
-        )
+        data = json.loads(response[start:end])
+        return bool(data.get("is_valid"))
 
+    except Exception as e:
+        logger.warning(f"Tow reason validation failed: {e}")
+        return False
+
+
+# NODES
+async def init_node(state: MruNavAgent) -> MruNavAgent:
+    await mcp_client.reset_data()
+    state["lane"] = "SAFETY"
+    state["done"] = False
+    state.setdefault("messages", [])
     return state
 
 
-async def handle_audio(state: MruNavAgent) -> MruNavAgent:
-    transcript = state.get("audio_transcript")
-    if not transcript:
-        return state
+async def wait_for_user(state: MruNavAgent) -> MruNavAgent:
+    incoming: Dict[str, Any] = interrupt("waiting")
 
-    logger.info("Processing audio transcript")
+    if incoming.get("user_message"):
+        text = incoming["user_message"]
+        state["user_message"] = text
+        state["messages"].append(HumanMessage(content=text))
 
-    state.setdefault("messages", []).append(HumanMessage(content=transcript))
-    state["user_message"] = transcript
+    if incoming.get("audio_transcript"):
+        text = incoming["audio_transcript"]
+        state["user_message"] = text
+        state["messages"].append(HumanMessage(content=text))
+
+    if incoming.get("lat") is not None and incoming.get("lon") is not None:
+        state["lat"] = incoming["lat"]
+        state["lon"] = incoming["lon"]
 
     return state
 
 
 async def resolve_gps(state: MruNavAgent) -> MruNavAgent:
-    lat, lon = state.get("lat"), state.get("lon")
-
-    if lat is None or lon is None:
+    if state.get("accident_location_address"):
         return state
 
-    try:
-        address = reverse_geocode(lat, lon)
-        if address:
-            await mcp_client.set_field("accident_location_address", address)
-    except Exception as e:
-        logger.warning(f"GPS failed: {e}")
+    if state.get("lat") is None or state.get("lon") is None:
+        return state
+
+    address = reverse_geocode(state["lat"], state["lon"])
+    if address:
+        state["accident_location_address"] = address
+        await mcp_client.set_field("accident_location_address", address)
 
     return state
 
 
-async def update_from_user_answer(state: MruNavAgent) -> MruNavAgent:
-    last_human = None
-    for msg in reversed(state.get("messages", [])):
-        if isinstance(msg, HumanMessage):
-            last_human = msg
-            break
-
-    if not last_human:
+async def collect_and_validate(state: MruNavAgent) -> MruNavAgent:
+    lane = state.get("lane")
+    text = state.get("user_message")
+    if not text:
         return state
 
-    text = last_human.content.strip()
-    text_l = text.lower()
+    # SAFETY
+    if lane == "SAFETY":
+        yn = parse_yes_no(text)
+        if yn is None:
+            return state
 
-    current = await mcp_client.get_fields()
+        state["safety_confirmed"] = yn
+        await mcp_client.set_field("user_safe", "yes" if yn else "no")
 
-    #DAMAGE
-    if current.get("damage_description") is None:
-        if text_l not in {"yes", "no"}:
-            await mcp_client.set_field("damage_description", text)
+        if not yn:
+            state["done"] = True
+            state["messages"].append(
+                AIMessage(content="This may be an emergency. Please call 911 immediately.")
+            )
         return state
 
-    #LOCATION
-    if current.get("accident_location_address") is None:
-        if any(w in text_l for w in ["street", "st", "ave", "road", "rd", "blvd", "drive", "dr", "highway"]):
+    # INCIDENT
+    if lane == "INCIDENT" and looks_like_incident(text):
+        state["accident_details"] = text
+        await mcp_client.set_field("damage_description", text)
+        return state
+
+    # LOCATION
+    if lane == "LOCATION":
+        if state.get("accident_location_address"):
+            return state
+        if looks_like_address(text):
+            state["accident_location_address"] = text
             await mcp_client.set_field("accident_location_address", text)
         return state
 
-    #  OPERABLE
-    if current.get("is_vehicle_operable") is None:
-        if text_l in {"yes", "yeah", "yep"}:
-            await mcp_client.set_field("is_vehicle_operable", "yes")
-        elif text_l in {"no", "nope", "nah"}:
-            await mcp_client.set_field("is_vehicle_operable", "no")
+    #  OPERABILITY
+    if lane == "OPERABILITY":
+        yn = parse_yes_no(text)
+        if yn is not None:
+            state["vehicle_operable"] = "yes" if yn else "no"
+            await mcp_client.set_field("is_vehicle_operable", state["vehicle_operable"])
         return state
 
-    # 4️REASON FOR TOW
-    if current.get("reason_for_towing") is None:
+    #TOW REASON
+    if lane == "TOW_REASON":
+        is_valid = await llm_validate_tow_reason(text)
+        if not is_valid:
+            return state
+
+        state["reason_for_towing"] = text
         await mcp_client.set_field("reason_for_towing", text)
         return state
 
     return state
 
-
-
-async def ask_next_question(state: MruNavAgent) -> MruNavAgent:
-    current = await mcp_client.get_fields()
-
-    #  DAMAGE
-    if not current.get("damage_description"):
-        msg = "Can you tell me what happened to your vehicle?"
-    
-    #  LOCATION
-    elif not current.get("accident_location_address"):
-        msg = "Where is your vehicle right now? Please share the exact address or nearest landmark."
-    
-    #  OPERABILITY
-    elif not current.get("is_vehicle_operable"):
-        msg = "Is your vehicle still operable, or does it need to be towed?"
-    
-    # REASON FOR TOWING
-    elif not current.get("reason_for_towing"):
-        msg = "What is the main reason you need towing today?"
-
+async def router(state: MruNavAgent) -> MruNavAgent:
+    if state.get("done") and state.get("safety_confirmed") is False:
+        return state  
+    if state.get("safety_confirmed") is not True:
+        state["lane"] = "SAFETY"
+    elif not state.get("accident_details"):
+        state["lane"] = "INCIDENT"
+    elif not state.get("accident_location_address"):
+        state["lane"] = "LOCATION"
+    elif not state.get("vehicle_operable"):
+        state["lane"] = "OPERABILITY"
+    elif not state.get("reason_for_towing"):
+        state["lane"] = "TOW_REASON"
     else:
-        state["done"] = True
-        state.setdefault("messages", []).append(
-            AIMessage(content="Thank you — I have everything I need to arrange your tow now.")
+        state["lane"] = "FINALIZE"
+    return state
+
+
+async def ask_lane_question(state: MruNavAgent) -> MruNavAgent:
+    if state.get("lane") == "FINALIZE":
+        state["messages"].append(
+            AIMessage(
+                content="Thanks — I have everything I need to arrange your tow now."
+            )
         )
+        state["done"] = True
         return state
 
-    state.setdefault("messages", []).append(AIMessage(content=msg))
+    known = {
+        "accident_details": state.get("accident_details"),
+        "accident_location_address": state.get("accident_location_address"),
+        "vehicle_operable": state.get("vehicle_operable"),
+        "reason_for_towing": state.get("reason_for_towing"),
+    }
+
+    prompt = await render_prompt(
+        "lane_question_generator.j2",
+        {
+            "lane": state.get("lane"),
+            "user_name": state.get("user_name"),
+            "known": known,
+        },
+    )
+
+    response = await llm.get_chat_response(
+        messages=[{"role": "system", "content": prompt}]
+    )
+
+    state["messages"].append(AIMessage(content=response.strip()))
     return state
 
 
-
-async def check_done(state: MruNavAgent) -> MruNavAgent:
-    current = await mcp_client.get_fields()
-
-    required = [
-        current.get("damage_description"),
-        current.get("accident_location_address"),
-        current.get("is_vehicle_operable"),
-        current.get("reason_for_towing"),
-    ]
-
-    if all(v is not None and str(v).strip() != "" for v in required):
-        state["done"] = True
-        state.setdefault("messages", []).append(
-            AIMessage(content="we have everthing,tow car is on the way")
-        )
-    else:
-        state["done"] = False
-
-    return state
-
-
+def should_end(state: MruNavAgent):
+    if state.get("lane") == "FINALIZE" and state.get("done"):
+        return END
+    return "wait_for_user"
 
 
 # GRAPH
 builder = StateGraph(MruNavAgent)
 
-builder.add_node("greeting", ask_for_user_status)
-builder.add_node("wait_for_user", user_response)
-builder.add_node("analyze_user", analyze_user_status)
+builder.add_node("init", init_node)
+builder.add_node("ask", ask_lane_question)
+builder.add_node("wait", wait_for_user)
+builder.add_node("gps", resolve_gps)
+builder.add_node("collect", collect_and_validate)
+builder.add_node("route", router)
 
-builder.add_node("handle_audio", handle_audio)
-builder.add_node("resolve_gps", resolve_gps)
-builder.add_node("update_from_user", update_from_user_answer)
+builder.set_entry_point("init")
 
-builder.add_node("ask_next", ask_next_question)
-builder.add_node("check_done", check_done)
-
-builder.set_entry_point("greeting")
-
-builder.add_edge("greeting", "wait_for_user")
-builder.add_edge("wait_for_user", "analyze_user")
-builder.add_edge("analyze_user", "handle_audio")
-builder.add_edge("handle_audio", "resolve_gps")
-builder.add_edge("resolve_gps", "update_from_user")
-builder.add_edge("update_from_user", "ask_next")
-builder.add_edge("ask_next", "check_done")
-
-def router(state: MruNavAgent):
-    if state.get("done") is True:
-        return END
-    return "wait_for_user"
-
+builder.add_edge("init", "ask")
+builder.add_edge("ask", "wait")
+builder.add_edge("wait", "gps")
+builder.add_edge("gps", "collect")
+builder.add_edge("collect", "route")
 builder.add_conditional_edges(
-    "check_done",
-    router,
+    "route",
+    should_end,
     {
-        "wait_for_user": "wait_for_user",
-        END: END
-    }
+        "wait_for_user": "ask",
+        END: END,
+    },
 )
 
-checkpoint_saver = InMemorySaver()
-agent = builder.compile(checkpointer=checkpoint_saver)
+agent = builder.compile(checkpointer=InMemorySaver())
 
-
-
+# LOCAL RUN
 if __name__ == "__main__":
     session_id = str(uuid.uuid4())
-    try:
-        final_state = agent.invoke(
-            {"user_name": "John Doe"},
-            config={"configurable": {"thread_id": session_id}},
-        )
-        print(final_state["messages"][-1].content)
-    except Exception as e:
-        print("Graph waiting for user input:", repr(e))
+    agent.invoke(
+        {"user_name": "John Doe"},
+        config={"configurable": {"thread_id": session_id}},
+    )

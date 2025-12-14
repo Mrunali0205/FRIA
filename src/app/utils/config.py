@@ -22,16 +22,18 @@ class Settings(pydantic_settings.BaseSettings):
     # Backend URL
     BACKEND_URL: Optional[str] = None
 
+    DB_USER: Optional[str] = None
+    DB_PASSWORD: Optional[str] = None
+    DB_HOST: Optional[str] = None
+    DB_PORT: Optional[int] = None
+    DB_NAME: Optional[str] = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
 
 
-# Instantiate settings. Fields are optional to avoid a hard crash during import;
-# later code can assert presence of required keys at runtime and provide a
-# clearer error message. This is helpful when the current working directory
-# differs from the repo root (uvicorn may change working dir depending on how
-# it's launched).
+
 settings = Settings()
 
 
