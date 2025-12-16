@@ -87,13 +87,13 @@ Run the below command to check if the tables are ctreated or not, if not created
 
     ```bash
     python3 -m src.database.check_for_tables_or_seed_create
-
+    ```
     or 
-
+    ```bash
     python3 src/database/check_for_tables_or_seed_create.py
     ```
 
-1. MCP server (towing intake toolset)
+2. MCP server (towing intake toolset)
 
     ```bash
 	 python src/mcp_servers/towing_server.py
@@ -102,7 +102,7 @@ Run the below command to check if the tables are ctreated or not, if not created
 	 This starts an HTTP MCP server on `127.0.0.1:8765` (the Streamlit UI and
 	 example clients connect to this).
 
-2. Backend FastAPI app
+3. Backend FastAPI app
 
 	 From the project root go to src directory and run:
 
@@ -116,42 +116,4 @@ Run the below command to check if the tables are ctreated or not, if not created
 	 - POST `/agent/invoke` — invoke the agent with a user message + context.
 	 - POST `/agent/invoke_towing_guide` — request a towing guide summary.
 
-3. Streamlit UI (If you want to see the new UI run Reflex instead)
 
-	 From the project root go to src directory and run:
-
-     ```bash
-	 streamlit run streamlit_app/main.py
-     ```
-
-	 Open the URL printed by Streamlit (usually `http://localhost:8501`) and you
-	 should see the Tesla Towing Assistant UI. The UI will call the FastAPI backend
-	 and the MCP server.
-
-4. Reflex
-   
-   From the project root go to the Reflex Folder directory and run:
-   
-   ```bash
-	 reflex run
-   ```
-   And you should see the notification as app is running in the terminal along with the url it's running on.
-
-Tips and troubleshooting
-------------------------
-
-- If the Streamlit UI shows errors about contacting the backend, verify
-	`BACKEND_URL` is set correctly and reachable from the machine running Streamlit.
-- The MCP server reads/writes `tow_data.json` in the repository root. If you
-	want to start fresh, delete or edit that file; the MCP server will re-create
-	it with defaults.
-- If you use OpenAI or another LLM provider, make sure your API key is set in
-	the environment and that `app.py` is configured to create an LLM client.
-
-Development notes
------------------
-
-- The MCP tool wrappers are defined in `towing_server.py` using `fastmcp.FastMCP`.
-- The Streamlit app uses `fastmcp.Client` to call MCP tools and a small FastAPI
-	backend to encapsulate agent logic. See `src/streamlit_app/main.py` for the
-	UI flow and `src/app/main.py` for the simple HTTP endpoints.
