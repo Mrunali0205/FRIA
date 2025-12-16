@@ -1,13 +1,14 @@
+"""
+Main file to run FastAPI app for FRIA agent and services.
+"""
+
 import uuid
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from langgraph.types import Command
 from pydantic import BaseModel
-from typing import Optional
 
-# LangGraph agent
 from src.app.agent.MruNav_agent import agent
-# Schemas
 from src.app.apis.schemas.fria_agent_schema import (
     FriaAgentInvokeSchema,
 )
@@ -22,7 +23,7 @@ from src.app.infrastructure.db.repository import (
 )
 from src.app.infrastructure.db.session_repo import update_session_snapshot
 from src.app.infrastructure.db.state_serializer import serialize_state
-# Audio
+
 from src.app.services.audio_transcription_service import transcribe_mic
 
 app = FastAPI()

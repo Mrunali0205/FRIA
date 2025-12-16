@@ -25,4 +25,8 @@ geopy
 fastmcp
 
 #database
-psycopg2-binary sqlalchemy
+psycopg2-binary
+sqlalchemy
+
+# Workflows
+pylint

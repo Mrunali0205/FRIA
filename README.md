@@ -55,12 +55,24 @@ Quick start (Linux / macOS/ windows)
     Create `.env` file at root directory level. And add these env variables along with values.
 
     ```bash
-    ENDPOINT = 'Azure Endpoint'
-    API_VERSION = 'Api version'
-    MODEL_NAME = 'GPT model name'
-    DEPLOYMENT_NAME = "Azure OpenAI deployment name"
+    ENDPOINT=""
+ 
+    API_VERSION=""
+    
+    
+    AZURE_OPENAI_API_KEY=""
+    DEPLOYMENT_NAME=""
+    MODEL_NAME=""
+    MCP_URL=""
+    MCP_PORT=""
+    
+    BACKEND_URL=""
+    
+    AZURE_SPEECH_REGION=""
+    AZURE_SPEECH_KEY=""
 
-    OPENAI_API_KEY = "openai api key"
+    # PostgreSQL Database
+    DATABASE_URL = ""
     ```
 
 
@@ -68,6 +80,18 @@ Running the components
 ----------------------
 
 The project has three cooperating pieces. Run them in separate terminals (or use a process manager):
+
+1. Create tables with seed data.
+
+Run the below command to check if the tables are ctreated or not, if not created it will create the necessary tables with seed data.
+
+    ```bash
+    python3 -m src.database.check_for_tables_or_seed_create
+
+    or 
+
+    python3 src/database/check_for_tables_or_seed_create.py
+    ```
 
 1. MCP server (towing intake toolset)
 

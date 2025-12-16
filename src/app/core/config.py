@@ -1,9 +1,13 @@
-from typing import Optional
-import os
+"""
+Settings environment variables using pydantic-settings for configuration management.
+"""
 import pydantic_settings
-
+from typing import Optional
 
 class Settings(pydantic_settings.BaseSettings):
+    """
+    Settings class to manage environment variables for the application.
+    """
     # Azure OpenAI
     AZURE_OPENAI_API_KEY: Optional[str] = None
     ENDPOINT: Optional[str] = None
