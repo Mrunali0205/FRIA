@@ -56,3 +56,4 @@ def ip_geolocation() -> tuple[Optional[float], Optional[float]]:
 
     except Exception:
         return None, None
+    

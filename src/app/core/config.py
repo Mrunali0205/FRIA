@@ -25,6 +25,8 @@ class Settings(pydantic_settings.BaseSettings):
 
     # Backend URL
     BACKEND_URL: Optional[str] = None
+    # Frontend URL
+    FRONTEND_URL: Optional[str] = None
 
     # Database
     DATABASE_URL: Optional[str] = None

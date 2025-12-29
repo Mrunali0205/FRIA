@@ -31,6 +31,13 @@ class UserProfile(Base):
     driver_license_state = Column(String, nullable=True)
     credit_score = Column(String, nullable=True)
 
+    #relationships
+    vehicles_info = relationship("VehicleInfo", back_populates="user")
+    insurance_policies = relationship("InsurancePolicyDetails", back_populates="user")
+    sessions = relationship("Session", back_populates="user")
+    messages = relationship("Message", back_populates="user")
+    tow_requests = relationship("TowRequest", back_populates="user")
+
 class VehicleInfo(Base):
     __tablename__ = "vehicle_info"
 
@@ -53,6 +60,9 @@ class VehicleInfo(Base):
 
     #relationships
     user = relationship("UserProfile", back_populates="vehicles_info")
+    insurance_policies = relationship("InsurancePolicyDetails", back_populates="vehicle")
+    sessions = relationship("Session", back_populates="vehicle")
+    tow_requests = relationship("TowRequest", back_populates="vehicle")
 
 class InsurancePolicyDetails(Base):
     __tablename__ = "insurance_policy_details"
@@ -76,6 +86,7 @@ class InsurancePolicyDetails(Base):
 
     user = relationship("UserProfile", back_populates="insurance_policies")
     vehicle = relationship("VehicleInfo", back_populates="insurance_policies")
+    tow_requests = relationship("TowRequest", back_populates="insurance_policy")
 
 class Session(Base):
     __tablename__ = "sessions"
@@ -107,17 +118,22 @@ class Message(Base):
     user = relationship("UserProfile", back_populates="messages")
 
 
-# class TowRequest(Base):
-#     __tablename__ = "tow_requests"
+class TowRequest(Base):
+    __tablename__ = "tow_requests"
 
-#     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-#     session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"))
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicle_info.id"), nullable=False)
+    insurance_id = Column(UUID(as_uuid=True), ForeignKey("insurance_policy_details.id"), nullable=False)
 
-#     damage_description = Column(Text)
-#     accident_location_address = Column(Text)
-#     is_vehicle_operable = Column(String)
-#     reason_for_towing = Column(Text)
+    damage_description = Column(Text)
+    accident_location_address = Column(Text)
+    is_vehicle_operable = Column(String)
+    reason_for_towing = Column(Text)
 
-#     finalized_at = Column(DateTime, default=datetime.utcnow)
+    finalized_at = Column(DateTime, default=datetime.utcnow)
 
-#     session = relationship("Session", back_populates="tow_request")
+    #relationships
+    user = relationship("UserProfile", back_populates="tow_requests")
+    vehicle = relationship("VehicleInfo", back_populates="tow_requests")
+    insurance_policy = relationship("InsurancePolicyDetails", back_populates="tow_requests")

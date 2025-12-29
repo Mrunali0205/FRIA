@@ -34,3 +34,4 @@ def api_ip_location():
     """Approximate location based on IP address."""
     lat, lon = ip_geolocation()
     return {"lat": lat, "lon": lon}
+

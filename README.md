@@ -6,11 +6,8 @@ This repository contains proof-of-concept agent for first responders that collec
 - `src/mcp_servers/towing_server.py` — an MCP server (FastMCP) that exposes tools to read/set
 	required towing fields and to return extracted owner-manual chunks.
 - `src/` — application frontends and backend:
-	- `src/streamlit_app/main.py` — Streamlit UI that talks to a small backend and
-		to the MCP server.
-	- `src/app/main.py` — a tiny FastAPI backend with endpoints the Streamlit
+- `src/app/main.py` — a tiny FastAPI backend with endpoints the Streamlit
 		front-end calls: `/agent/start`, `/agent/invoke`, `/agent/invoke_towing_guide`.
-- `src/mcp_servers/tow_extract.json`, `src/mcp_servers/tow_data.json` — example data files used by the MCP server.
 
 Quick start (Linux / macOS/ windows)
 --------------------------+
@@ -75,7 +72,11 @@ Quick start (Linux / macOS/ windows)
     DATABASE_URL = ""
     ```
 
+7. Run this only once you cloned the repository(only one time). To setup the database with seed data run the below command
 
+    ```bash
+    python3 -m src.database.check_for_tables_or_seed_create
+    ```
 Running the components
 ----------------------
 
