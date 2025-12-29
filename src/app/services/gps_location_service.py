@@ -1,11 +1,10 @@
+"""GPS location services."""
 import requests
 from typing import Optional, List, Dict
 from geopy.geocoders import Nominatim
 
-# Geopy client
 geolocator = Nominatim(user_agent="tesla_tow_app")
 
-# Reverse Geocoding
 def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     """
     Convert latitude/longitude → human-readable address.
@@ -17,7 +16,6 @@ def reverse_geocode(lat: float, lon: float) -> Optional[str]:
     except Exception:
         return None
 
-# Forward Search / Autocomplete
 def search_address(query: str) -> List[Dict]:
     """
     Query partial address 
@@ -43,7 +41,6 @@ def search_address(query: str) -> List[Dict]:
     except Exception:
         return []
 
-# IP Geolocation (Fallback)
 def ip_geolocation() -> tuple[Optional[float], Optional[float]]:
     try:
         res = requests.get("https://ipinfo.io/json", timeout=5)
@@ -56,4 +53,3 @@ def ip_geolocation() -> tuple[Optional[float], Optional[float]]:
 
     except Exception:
         return None, None
-    
