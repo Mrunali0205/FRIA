@@ -1,4 +1,4 @@
-from src.app.agent.MruNav_agent import agent
+from app.agent.fria_agent import agent
 
 
 async def start_agent_session():

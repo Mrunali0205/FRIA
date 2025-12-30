@@ -1,125 +1,80 @@
-import json
-import uuid
-from pathlib import Path
+"""FRIA Agent Module"""
+import os
+from typing import TypedDict, Optional, List, Literal, Dict, Any
+
+from langgraph.types import interrupt
+from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from jinja2 import Environment, FileSystemLoader
+
+from src.app.core.log_config import setup_logging
 from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
-from app.utils.mcp_client import MCPClient
+from src.app.services.gps_location_service import reverse_geocode
+from src.mcp_servers.towing_client import TowingMCPClient
 
-TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "prompt_management"
-jinja_env = Environment(
-    loader=FileSystemLoader(str(TEMPLATE_DIR)),
-    autoescape=False,
-)
-prompt_template = jinja_env.get_template("chat_prompt_template.j2")
+logger = setup_logging("FRIA AGENT")
+llm = AzureOpenAIClient()
+mcp_client = TowingMCPClient()
 
+base_dir = os.path.dirname(os.path.dirname(__file__))
+prompt_templates_path = os.path.join(base_dir, "prompt_management")
+env = Environment(loader=FileSystemLoader(prompt_templates_path))
 
-FIELD_MAP = {
-    "full_name": "full_name",
-    "name": "full_name",
+class FRIAgent(TypedDict):
+    """State structure for FRIA Agent"""
+    mode: str
+    user_response: Optional[str]
+    recorded_transcription: Optional[str]
+    extracted_information: Dict[str, Any]
+    lat: Optional[float]
+    lon: Optional[float]
+    validation_status: Optional[Literal["complete", "incomplete"]]
+    towing_form: Optional[Dict[str, Any]]
+    messages: List[BaseMessage]
 
-    "contact_number": "contact_number",
-    "phone": "contact_number",
+def load_template(template_name: str, input_data: dict) -> str:
+    """Load and render a Jinja2 prompt template."""
+    template = env.get_template(template_name)
+    return template.render(**input_data)
 
-    "email_address": "email_address",
-    "email": "email_address",
-
-    "Tesla_model": "Tesla_model",
-    "model": "Tesla_model",
-
-    "VIN_number": "VIN_number",
-    "vin": "VIN_number",
-
-    "license_plate": "license_plate",
-    "plate": "license_plate",
-
-    "vehicle_color": "vehicle_color",
-    "color": "vehicle_color",
-
-    "accident_location_address": "accident_location_address",
-    "location": "accident_location_address",
-    "address": "accident_location_address",
-
-    "is_vehicle_operable": "is_vehicle_operable",
-    "operable": "is_vehicle_operable",
-
-    "damage_description": "damage_description",
-    "damage": "damage_description",
-
-    "reason_for_towing": "reason_for_towing",
-    "towing_reason": "reason_for_towing",
-
-    "insurance_company_name": "insurance_company_name",
-    "insurance_company": "insurance_company_name",
-
-    "insurance_policy_number": "insurance_policy_number",
-    "policy": "insurance_policy_number"
-}
-
-def extract_fields(text):
+def decide_on_mode(state: FRIAgent) -> str:
+    """Decide the agent's mode based on user opted mode."""
+    logger.info("Deciding on agent mode based on user mode.")
     try:
-        data = json.loads(text)
-    except:
+        mode = state.get("mode", "")
+        if mode == "audio":
+            return "audio"
+        elif mode == "chat":
+            return "chat"
+        else:
+            return "chat"
+    except Exception as e:
+        logger.error(f"Error deciding mode: {e}")
+        return "chat"
+    
+def extract_info_from_transcription(transcription: str) -> Dict[str, Any]:
+    """Extract structured information from audio transcription."""
+    logger.info("Extracting information from transcription.")
+    prompt = load_template("info_extraction_prompt.txt", {"transcription": transcription})
+    response = llm.complete(prompt)
+    try:
+        info = eval(response)  # Caution: eval can be dangerous; ensure the response is safe
+        return info if isinstance(info, dict) else {}
+    except Exception as e:
+        logger.error(f"Error extracting information: {e}")
         return {}
-
-    out = {}
-    for key, value in data.items():
-        if value and key in FIELD_MAP:
-            out[FIELD_MAP[key]] = value
-
-    return out
-
-
-def invoke_agent(
-    session_id: uuid.UUID,
-    user_message: str,
-    chat_history: list | None = None,
-    current_data: dict | None = None,
-):
-    """
-    Main agent function that processes user messages and returns responses.
     
-    Args:
-        user_message: The user's current message
-        chat_history: List of previous messages (optional)
-        current_data: Current form data (optional)
-    """
-    # Set defaults if not provided
-    if chat_history is None:
-        chat_history = []
-    if current_data is None:
-        current_data = {}
+def validate_extracted_info(info: Dict[str, Any]) -> str:
+    """Validate the extracted information."""
+    logger.info("Validating extracted information.")
+    required_fields = ["name", "contact_number", "vehicle_make", "vehicle_model", "license_plate"]
+    for field in required_fields:
+        if field not in info or not info[field]:
+            return "incomplete"
+    return "complete"
+
+
+
+
     
-    # 1. Render chat prompt template with latest data
-    prompt = prompt_template.render(
-        user_message=user_message,
-        chat_history=chat_history,
-        current_data=current_data,
-    )
-
-    # 2. Ask LLM for JSON fields
-    llm_response = call_openai(prompt)
-
-    # 3. Extract structured fields
-    extracted = extract_fields(llm_response)
-
-    # 4. Save to MCP
-    mcp = MCPClient()
-    for field, value in extracted.items():
-        mcp.call("set_field", {"field": field, "value": value})
-
-    # 5. Get updated form and required-field status
-    _ = mcp.call("get_fields", {}, session_id=str(session_id))["result"]
-    missing = mcp.call("list_required_fields", {}, session_id=str(session_id))["result"]
-
-    # 6. Next question logic per spec
-    if not missing:
-        next_q = "Great, I have all the information I need."
-    else:
-        next_field = missing[0].replace("_", " ")
-        next_q = f"I still need your {next_field}."
-
-    return {
-        "updates": extracted,
-        "ask": next_q,
-        "done": len(missing) == 0,
-    }
