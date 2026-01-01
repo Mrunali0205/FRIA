@@ -50,3 +50,7 @@ def transcribe_mic(language: str = "en-US"):
 
     except Exception as e:
         return f"Exception: {str(e)}"
+
+if __name__ == "__main__":
+    text = transcribe_mic()
+    print(text)

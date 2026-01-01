@@ -1,5 +1,7 @@
 """FRIA Agent Module"""
 import os
+import json
+import asyncio
 from typing import TypedDict, Optional, List, Literal, Dict, Any
 
 from langgraph.types import interrupt
@@ -27,9 +29,10 @@ class FRIAgent(TypedDict):
     user_response: Optional[str]
     recorded_transcription: Optional[str]
     extracted_information: Dict[str, Any]
+    vehicle_type: Optional[str]
     lat: Optional[float]
     lon: Optional[float]
-    validation_status: Optional[Literal["complete", "incomplete"]]
+    validation_status: Optional[dict]
     towing_form: Optional[Dict[str, Any]]
     messages: List[BaseMessage]
 
@@ -53,26 +56,83 @@ def decide_on_mode(state: FRIAgent) -> str:
         logger.error(f"Error deciding mode: {e}")
         return "chat"
     
-def extract_info_from_transcription(transcription: str) -> Dict[str, Any]:
+def get_inputs_for_mode(state: FRIAgent) -> FRIAgent:
+    """Get user inputs based on the selected mode."""
+    logger.info("Getting user inputs based on selected mode.")
+    mode = state.get("mode", "")
+    if mode == "audio":
+        transcription = state.get("recorded_transcription", "")
+        vehicle_type = state.get("vehicle_type", "")
+        state["recorded_transcription"] = transcription
+        state["vehicle_type"] = vehicle_type
+        if "messages" not in state:
+            state["messages"] = []
+        return state
+    elif mode == "chat":
+        if "messages" not in state:
+            state["messages"] = []
+        user_response = state.get("user_response", "")
+        state["messages"].append(HumanMessage(content=user_response))
+        state["user_response"] = user_response
+        return state
+    else:
+        return state
+    
+def extract_info_from_transcription(state: FRIAgent) -> FRIAgent:
     """Extract structured information from audio transcription."""
     logger.info("Extracting information from transcription.")
-    prompt = load_template("info_extraction_prompt.txt", {"transcription": transcription})
-    response = llm.complete(prompt)
     try:
-        info = eval(response)  # Caution: eval can be dangerous; ensure the response is safe
-        return info if isinstance(info, dict) else {}
+        transcription = state.get("recorded_transcription", "")
+        vehicle_type = state.get("vehicle_type", "")
+
+        if not all([transcription, vehicle_type]):
+            logger.warning("No transcription or vehicle type available for extraction.")
+            state["extracted_information"] = {}
+            return state
+        prompt = load_template("info_extraction_prompt.txt", {"transcription_text": transcription, "vehicle_type": vehicle_type})
+        response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
+        info = json.loads(response)
+        state["extracted_information"] = info
+        state["messages"].append(AIMessage(content="Key information required for towing has been extracted."))
+        logger.info(f"Key information from audio is extracted successfully")
+        return state
     except Exception as e:
         logger.error(f"Error extracting information: {e}")
-        return {}
+        state["extracted_information"] = {}
+        return state
     
-def validate_extracted_info(info: Dict[str, Any]) -> str:
+def validate_extracted_info(state: FRIAgent) -> FRIAgent:
     """Validate the extracted information."""
     logger.info("Validating extracted information.")
-    required_fields = ["name", "contact_number", "vehicle_make", "vehicle_model", "license_plate"]
-    for field in required_fields:
-        if field not in info or not info[field]:
-            return "incomplete"
-    return "complete"
+    try:
+        mode = state["mode"]
+        if mode == "audio":
+            audio_transcription = state["transcription"]
+            extracted_info = state["extracted_information"]
+            prompt = load_template("validation_agent_prompt.j2", {
+                "mode": "audio",
+                "transcription": audio_transcription,
+                "extracted_data": extracted_info
+            })
+        elif mode == "chat":
+            user_response = state["user_response"]
+            extracted_info = state["extracted_information"]
+            prompt = load_template("validation_agent_prompt.j2", {
+                "mode": "chat",
+                "user_response": user_response,
+                "agent_question": extracted_info
+            })
+        response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
+        validation_result = json.loads(response)
+        state["validation_status"] = validation_result
+        state["messages"].append(AIMessage(content="Extracted information has been validated."))
+        logger.info("Extracted information validated successfully.")
+        return state
+    except Exception as e:
+        logger.error(f"Error validating information: {e}")
+        state["validation_status"] = {"status": "incomplete"}
+        return state
+    
 
 
 
