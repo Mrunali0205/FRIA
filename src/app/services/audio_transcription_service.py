@@ -2,6 +2,7 @@
 import azure.cognitiveservices.speech as speechsdk
 from src.app.utils.config import settings
 from src.app.core.log_config import setup_logging
+from src.app.apis.deps import DBClientDep
 
 logger = setup_logging("AUDIO TRANSCRIPTION SERVICE")
 
@@ -51,6 +52,12 @@ def transcribe_mic(language: str = "en-US"):
     except Exception as e:
         return f"Exception: {str(e)}"
 
-if __name__ == "__main__":
-    text = transcribe_mic()
-    print(text)
+
+def add_audio_transcription(db_client: DBClientDep, session_id: str, user_id: str, transcription: str) -> None:
+    """
+    Add an audio transcription message to the database.
+    """
+    db_client.insert(
+        query="INSERT INTO audio_transcripts (session_id, user_id, transcription_text) VALUES (:session_id, :user_id, :transcription_text)",
+        values={"session_id": session_id, "user_id": user_id, "transcription_text": transcription}
+    )

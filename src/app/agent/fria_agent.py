@@ -2,10 +2,10 @@
 import os
 import json
 import asyncio
-from typing import TypedDict, Optional, List, Literal, Dict, Any
+from typing import TypedDict, Optional, List, Dict, Any
 
 from langgraph.types import interrupt
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from jinja2 import Environment, FileSystemLoader
@@ -29,10 +29,16 @@ class FRIAgent(TypedDict):
     user_response: Optional[str]
     recorded_transcription: Optional[str]
     extracted_information: Dict[str, Any]
+    agent_query: Optional[str]
+    fields_processed: Optional[Dict[str, Any]]
+    towing_form: Optional[Dict[str, Any]]
     vehicle_type: Optional[str]
     lat: Optional[float]
     lon: Optional[float]
+    agent_state: Optional[str]
     validation_status: Optional[dict]
+    data_validation_status: Optional[bool]
+    final_audio_validation_status: Optional[str]
     towing_form: Optional[Dict[str, Any]]
     messages: List[BaseMessage]
 
@@ -41,20 +47,51 @@ def load_template(template_name: str, input_data: dict) -> str:
     template = env.get_template(template_name)
     return template.render(**input_data)
 
-def decide_on_mode(state: FRIAgent) -> str:
-    """Decide the agent's mode based on user opted mode."""
+def init_mode(state: FRIAgent) -> FRIAgent:
+    """Initialize the agent's mode based on user input."""
+    logger.info("Initializing agent mode based on user input.")
+    agent_state = state.get("agent_state", "initiate")
+    if agent_state == "initiate":
+        fields_processed = {
+                    "incident": "NOT_PROCESSED",
+                    "operability": "NOT_PROCESSED",
+                    "vehicle_condition": "NOT_PROCESSED",
+                    "battery_condition": "NOT_PROCESSED"
+            }
+        state["fields_processed"] = fields_processed
+        towing_form = {
+                    "incident": "",
+                    "operability": "",
+                    "vehicle_condition": "",
+                    "battery_condition": ""
+            }
+        state["towing_form"] = towing_form
+        state["agent_state"] = "in_progress"
+        if "messages" not in state:
+            state["messages"] = []
+            state["messages"].append(AIMessage(content="Agent initiated."))
+    return state
+
+def route_to_chat_or_audio(state: FRIAgent) -> str:
+    """route to chat or audio based on mode."""
     logger.info("Deciding on agent mode based on user mode.")
     try:
         mode = state.get("mode", "")
+        final_audio_validation_status = state.get("final_audio_validation_status", "")
+        if not mode:
+            logger.warning("No mode specified, defaulting to chat_node.")
+            raise ValueError("Mode not specified")
+        if mode == "audio" and final_audio_validation_status == "FAILED":
+            return "chat_node"
         if mode == "audio":
-            return "audio"
-        elif mode == "chat":
-            return "chat"
+            return "inputs_audio"
+        elif mode == "chat_node":
+            return "chat_node"
         else:
-            return "chat"
+            return "chat_node"
     except Exception as e:
         logger.error(f"Error deciding mode: {e}")
-        return "chat"
+        return "chat_node"
     
 def get_inputs_for_mode(state: FRIAgent) -> FRIAgent:
     """Get user inputs based on the selected mode."""
@@ -63,27 +100,22 @@ def get_inputs_for_mode(state: FRIAgent) -> FRIAgent:
     if mode == "audio":
         transcription = state.get("recorded_transcription", "")
         vehicle_type = state.get("vehicle_type", "")
+        if not all([transcription, vehicle_type]):
+            logger.warning("Missing transcription or vehicle type for audio mode.")
+            raise ValueError("Missing transcription or vehicle type")
         state["recorded_transcription"] = transcription
         state["vehicle_type"] = vehicle_type
         if "messages" not in state:
             state["messages"] = []
         return state
-    elif mode == "chat":
-        if "messages" not in state:
-            state["messages"] = []
-        user_response = state.get("user_response", "")
-        state["messages"].append(HumanMessage(content=user_response))
-        state["user_response"] = user_response
-        return state
-    else:
-        return state
+    return state
     
 def extract_info_from_transcription(state: FRIAgent) -> FRIAgent:
     """Extract structured information from audio transcription."""
     logger.info("Extracting information from transcription.")
     try:
-        transcription = state.get("recorded_transcription", "")
-        vehicle_type = state.get("vehicle_type", "")
+        transcription = state["recorded_transcription"]
+        vehicle_type = state["vehicle_type"]
 
         if not all([transcription, vehicle_type]):
             logger.warning("No transcription or vehicle type available for extraction.")
@@ -106,7 +138,21 @@ def validate_extracted_info(state: FRIAgent) -> FRIAgent:
     logger.info("Validating extracted information.")
     try:
         mode = state["mode"]
-        if mode == "audio":
+        final_audio_validation_status = state.get("final_audio_validation_status", "")
+        if mode == "audio" and final_audio_validation_status == "FAILED":
+            user_response = state["user_response"]
+            agent_query = state.get("agent_query", "")
+            prompt = load_template("validation_agent_prompt.j2", {
+                "mode": "chat",
+                "user_response": user_response,
+                "agent_query": agent_query
+            })
+            response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
+            validation_result = json.loads(response)
+            state["validation_status"] = validation_result
+            logger.info("Extracted information validated successfully in chat mode after audio failure.")
+            return state
+        elif mode == "audio":
             audio_transcription = state["transcription"]
             extracted_info = state["extracted_information"]
             prompt = load_template("validation_agent_prompt.j2", {
@@ -116,16 +162,15 @@ def validate_extracted_info(state: FRIAgent) -> FRIAgent:
             })
         elif mode == "chat":
             user_response = state["user_response"]
-            extracted_info = state["extracted_information"]
+            agent_query = state.get("agent_query", "")
             prompt = load_template("validation_agent_prompt.j2", {
                 "mode": "chat",
                 "user_response": user_response,
-                "agent_question": extracted_info
+                "agent_query": agent_query
             })
         response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
         validation_result = json.loads(response)
         state["validation_status"] = validation_result
-        state["messages"].append(AIMessage(content="Extracted information has been validated."))
         logger.info("Extracted information validated successfully.")
         return state
     except Exception as e:
@@ -133,8 +178,124 @@ def validate_extracted_info(state: FRIAgent) -> FRIAgent:
         state["validation_status"] = {"status": "incomplete"}
         return state
     
-
-
-
-
+def update_towing_form(state: FRIAgent) -> FRIAgent:
+    """Update the towing form based on validated information."""
+    logger.info("Updating towing form based on validated information.")
+    try:
+        mode = state["mode"]
+        towing_form = state["towing_form"]
+        validation_status = state["validation_status"]
+        extracted_information = state["extracted_information"]
+        fields_processed = state["fields_processed"]
+        final_audio_validation_status = state["final_audio_validation_status"]
+        if mode == "audio" and final_audio_validation_status == "FAILED":
+            user_response = state["user_response"]
+            field, value = tuple(validation_status.items())
+            if value == "SUCCESSED":
+                towing_form[field] = user_response
+                fields_processed[field] = "PROCESSED"
+        elif mode == "audio":
+            for field, status in validation_status.items():
+                if status == "SUCCESSED":
+                    towing_form[field] = extracted_information.get(field, "")
+                    fields_processed[field] = "PROCESSED"
+        elif mode == "chat":
+            user_response = state["user_response"]
+            field, value = tuple(validation_status.items())
+            if value == "SUCCESSED":
+                towing_form[field] = user_response
+                fields_processed[field] = "PROCESSED"
+        state["fields_processed"] = fields_processed
+        state["towing_form"] = towing_form
+        logger.info("Towing form updated successfully.")
+        return state
+    except Exception as e:
+        logger.error(f"Error updating towing form: {e}")
+        return state
     
+def chat_node(state: FRIAgent) -> FRIAgent:
+    """Ask user about information about incident."""
+    logger.info("Asking user for missing or unclear information.")
+    try:
+        user_response = state["user_response"]
+        validation_status = state["validation_status"]
+        mode = state["mode"]
+        fields_processed = state["fields_processed"]
+        prompt = load_template("chat_prompt_template.j2", {
+            "mode": mode,
+            "user_response": user_response,
+            "chat_history": [{"role": msg.type, "content": msg.content} for msg in state["messages"]],
+            "validation_result": validation_status,
+            "fields_processed": fields_processed
+        })
+        response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
+        state["agent_query"] = response
+        state["messages"].append(AIMessage(content=response))
+        logger.info("User asked for missing information successfully.")
+        return state
+    except Exception as e:
+        logger.error(f"Error asking user: {e}")
+        return state
+
+def human_interrupt(state: FRIAgent) -> FRIAgent:
+    """Handle human interrupt."""
+    logger.info("Handling human interrupt.")
+    user_response = interrupt("Waiting for human intervention.")
+    user_response = user_response.get("content", "")
+    if user_response:
+        state["user_response"] = user_response
+        state["messages"].append(HumanMessage(content=user_response))
+    return state
+
+def should_go_for_chat_node_after_audio(state: FRIAgent) -> str:
+    """Decide if we need to go for chat mode based on validation status for audio mode."""
+    validation_status = state.get("validation_status", {})
+    if not validation_status:
+        logger.warning("No validation status found.")
+        return "No"
+    if "FAILED" in validation_status.values() or "MISSING" in validation_status.values():
+        state["final_audio_validation_status"] = "FAILED"
+        return "Yes"
+    else:
+        state["final_audio_validation_status"] = "PASSED"
+        return "No"
+    
+    
+
+friagent_builder = StateGraph(FRIAgent)
+
+friagent_builder.add_node("init_mode", init_mode)
+friagent_builder.add_node("get_inputs_for_mode", get_inputs_for_mode)
+friagent_builder.add_node("extract_info_from_transcription", extract_info_from_transcription)
+friagent_builder.add_node("validate_extracted_info", validate_extracted_info)
+friagent_builder.add_node("update_towing_form", update_towing_form)
+friagent_builder.add_node("chat_node", chat_node)
+friagent_builder.add_node("human_interrupt", human_interrupt)
+
+friagent_builder.add_edge(START, "init_mode")
+friagent_builder.add_conditional_edges(
+    "init_mode",
+    route_to_chat_or_audio,
+    {
+        "inputs_audio": "get_inputs_for_mode",
+        "chat_node": "chat_node"
+    }
+)
+friagent_builder.add_edge("get_inputs_for_mode", "extract_info_from_transcription")
+friagent_builder.add_edge("extract_info_from_transcription", "validate_extracted_info")
+friagent_builder.add_edge("validate_extracted_info", "update_towing_form")
+friagent_builder.add_conditional_edges(
+    "update_towing_form",
+    should_go_for_chat_node_after_audio,
+    {
+        "Yes": "chat_node",
+        "No": END
+    }
+)
+friagent_builder.add_edge("chat_node", "human_interrupt")
+friagent_builder.add_edge("human_interrupt", "validate_extracted_info")
+friagent_builder.add_edge("validate_extracted_info", "update_towing_form")
+friagent_builder.add_edge("update_towing_form", END)
+
+checkpoint_saver = InMemorySaver()
+friagent = friagent_builder.compile(checkpoint_saver=checkpoint_saver)

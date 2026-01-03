@@ -1,6 +1,6 @@
 """Audio API endpoints"""
 from fastapi import APIRouter, Depends, HTTPException
-from src.app.services.audio_transcription_service import transcribe_mic
+from src.app.services.audio_transcription_service import transcribe_mic, add_audio_transcription
 from src.app.core.log_config import setup_logging
 
 logger = setup_logging("AUDIO API")

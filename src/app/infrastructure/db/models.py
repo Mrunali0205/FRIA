@@ -1,3 +1,7 @@
+"""
+Database models for user profiles, vehicle information, insurance policies,
+sessions, messages, and tow requests.
+"""
 import uuid
 from datetime import datetime
 from sqlalchemy import (
@@ -15,7 +19,6 @@ from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
     pass
-
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
@@ -37,6 +40,7 @@ class UserProfile(Base):
     sessions = relationship("Session", back_populates="user")
     messages = relationship("Message", back_populates="user")
     tow_requests = relationship("TowRequest", back_populates="user")
+    audio_transcripts = relationship("AudioTranscript", back_populates="user")
 
 class VehicleInfo(Base):
     __tablename__ = "vehicle_info"
@@ -100,6 +104,7 @@ class Session(Base):
     messages = relationship("Message", back_populates="session")
     user = relationship("UserProfile", back_populates="sessions")
     vehicle = relationship("VehicleInfo", back_populates="sessions")
+    audio_transcripts = relationship("AudioTranscript", back_populates="session")
     #tow_request = relationship("TowRequest", back_populates="session", uselist=False)
 
 
@@ -116,6 +121,19 @@ class Message(Base):
 
     session = relationship("Session", back_populates="messages")
     user = relationship("UserProfile", back_populates="messages")
+
+class AudioTranscript(Base):
+    __tablename__ = "audio_transcripts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
+
+    transcription_text = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("UserProfile", back_populates="audio_transcripts")
+    session = relationship("Session", back_populates="audio_transcripts")
 
 
 class TowRequest(Base):

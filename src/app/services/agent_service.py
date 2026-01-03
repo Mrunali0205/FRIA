@@ -1,43 +1,94 @@
-from app.agent.fria_agent import agent
+"""
+Agent service module for initializing and managing the FRIA agent.
+"""
+from src.app.agent.fria_agent import friagent
+from src.app.core.log_config import setup_logging
+from src.app.apis.deps import DBClientDep
+from src.app.services.messages import add_message
 
+logger = setup_logging("AGENT SERVICE")
 
-async def start_agent_session():
-    session_id = str(uuid.uuid4())
-    db = SessionLocal()
+def initialize_agent(user_id: str, session_id: str) -> dict:
+    """Initialize the FRIA agent for a specific user."""
     try:
-        create_session(db, session_id, "John Doe")
-    finally:
-        db.close()
-    final_state = await agent.ainvoke(
-        {"user_name": "John Doe"},
-        config={"configurable": {"thread_id": session_id}},
-    )
-    snapshot = serialize_state(final_state)
-    update_session_snapshot(session_id, snapshot)
+        thread_config = {
+            "configurable" : {
+                "thread_id" : session_id
+            }
+        }
 
-    last_message = final_state["messages"][-1].content
-    return {
-        "session_id": session_id,
-        "last_message": last_message,
-    }
+        agent_state = friagent.invoke(
+            {
+                "agent_state": "initiate",
+            },
+            config=thread_config
+        )
 
-async def agent_continue(req: FriaAgentInvokeSchema):
-    resume_payload = {}
+        return {
+            "status": "success",
+            "agent_state": agent_state,
+            "message": "Agent initialized successfully.",
+            "session_id": session_id,
+        }
+    except Exception as e:
+        logger.error(f"Error initializing agent for user {user_id} and session {session_id}: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "agent_state": None,
+            "session_id": session_id,
+        }   
 
-    if req.user_message is not None:
-        resume_payload["user_message"] = req.user_message
+def agent_continue(db: DBClientDep, user_id: str, session_id: str, mode: str, vehicle_type: str = None,
+                   user_response: str = None, transcription: str = None,) -> dict:
+    """Continue the FRIA agent interaction for a specific user."""
+    try:
+        thread_config = {
+            "configurable" : {
+                "thread_id" : session_id
+            }
+        }
 
-    if req.lat is not None and req.lon is not None:
-        resume_payload["lat"] = req.lat
-        resume_payload["lon"] = req.lon
+        if user_response:
+            add_message(
+                db_client=db,
+                session_id=session_id,
+                user_id=user_id,
+                role="user",
+                content=user_response if mode == "chat" else transcription,
+            )
+            
+        agent_state = friagent.invoke(
+            {
+                "agent_state": "in_progress",
+                "mode": mode,
+                "vehicle_type": vehicle_type if mode == "audio" else None,
+                "recorded_transcription": transcription if mode == "audio" else None,
+                "user_response": user_response,
+            },
+            config=thread_config
+        )
 
-    final_state = await agent.ainvoke(
-        Command(resume=resume_payload),
-        config={"configurable": {"thread_id": str(req.session_id)}},
-    )
+        if agent_state["agent_query"]:
+            add_message(
+                db_client=db,
+                session_id=session_id,
+                user_id=user_id,
+                role="agent",
+                content=agent_state["agent_query"],
+            )
 
-    snapshot = serialize_state(final_state)
-    update_session_snapshot(str(req.session_id), snapshot)
-
-    last_message = final_state["messages"][-1].content
-    return {"last_message": last_message}
+        return {
+            "status": "success",
+            "agent_state": agent_state,
+            "message": "Agent continued successfully.",
+            "session_id": session_id,
+        }
+    except Exception as e:
+        logger.error(f"Error continuing agent for user {user_id} and session {session_id}: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+            "agent_state": None,
+            "session_id": session_id,
+        }
