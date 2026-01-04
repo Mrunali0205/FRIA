@@ -1,4 +1,6 @@
 """user service module for handling user-related database operations."""
+import uuid
+import datetime
 from src.app.apis.deps import DBClientDep
 from src.app.core.log_config import setup_logging
 
@@ -57,17 +59,21 @@ def fetch_session_id_by_user_vechicle_id(db_client: DBClientDep, user_id: str, v
         params={"user_id": user_id, "vehicle_id": vehicle_id}
     )
 
-    return session_info.get("id") if session_info else None
+    if not session_info:
+        return {"session_id": None}
+
+    return {"session_id": session_info["id"]}
 
 def create_session_id(db_client: DBClientDep, user_id: str, vehicle_id: str, user_name: str) -> str:
     """
     Create a new session ID for the user.
     """
+    random_id = str(uuid.uuid4())
+    time = datetime.datetime.now(datetime.timezone.utc)
     session_id = db_client.insert_returning_id(
-        query="INSERT INTO sessions (user_id) VALUES (:user_id) RETURNING id",
-        params={"user_id": user_id, "vehicle_id": vehicle_id, "user_name": user_name}
+        query="INSERT INTO sessions (id, user_id, vehicle_id, user_name, started_at) VALUES (:id, :user_id, :vehicle_id, :user_name, :started_at) RETURNING id",
+        values={"id": random_id, "user_id": user_id, "vehicle_id": vehicle_id, "user_name": user_name, "started_at": time}
     )
 
     return session_id
-
 

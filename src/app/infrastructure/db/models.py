@@ -107,7 +107,6 @@ class Session(Base):
     audio_transcripts = relationship("AudioTranscript", back_populates="session")
     #tow_request = relationship("TowRequest", back_populates="session", uselist=False)
 
-
 class Message(Base):
     __tablename__ = "messages"
 
@@ -134,6 +133,18 @@ class AudioTranscript(Base):
     
     user = relationship("UserProfile", back_populates="audio_transcripts")
     session = relationship("Session", back_populates="audio_transcripts")
+
+class geo_location(Base):
+    __tablename__ = "geo_locations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
+
+    latitude = Column(String, nullable=False)
+    longitude = Column(String, nullable=False)
+    address = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class TowRequest(Base):

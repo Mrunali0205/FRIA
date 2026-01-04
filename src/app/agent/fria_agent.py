@@ -49,9 +49,9 @@ def load_template(template_name: str, input_data: dict) -> str:
 
 def init_mode(state: FRIAgent) -> FRIAgent:
     """Initialize the agent's mode based on user input."""
-    logger.info("Initializing agent mode based on user input.")
     agent_state = state.get("agent_state", "initiate")
     if agent_state == "initiate":
+        logger.info("Initializing agent mode based on user input.")
         fields_processed = {
                     "incident": "NOT_PROCESSED",
                     "operability": "NOT_PROCESSED",
@@ -66,16 +66,17 @@ def init_mode(state: FRIAgent) -> FRIAgent:
                     "battery_condition": ""
             }
         state["towing_form"] = towing_form
-        state["agent_state"] = "in_progress"
         if "messages" not in state:
             state["messages"] = []
             state["messages"].append(AIMessage(content="Agent initiated."))
     return state
 
-def route_to_chat_or_audio(state: FRIAgent) -> str:
+def route_to_chat_or_audio(state: FRIAgent):
     """route to chat or audio based on mode."""
     logger.info("Deciding on agent mode based on user mode.")
     try:
+        if state["agent_state"] == "initiate":
+            return END
         mode = state.get("mode", "")
         final_audio_validation_status = state.get("final_audio_validation_status", "")
         if not mode:
@@ -97,7 +98,7 @@ def get_inputs_for_mode(state: FRIAgent) -> FRIAgent:
     """Get user inputs based on the selected mode."""
     logger.info("Getting user inputs based on selected mode.")
     mode = state.get("mode", "")
-    if mode == "audio":
+    if mode == "audio" and state["agent_state"] == "in_progress":
         transcription = state.get("recorded_transcription", "")
         vehicle_type = state.get("vehicle_type", "")
         if not all([transcription, vehicle_type]):
@@ -218,9 +219,9 @@ def chat_node(state: FRIAgent) -> FRIAgent:
     logger.info("Asking user for missing or unclear information.")
     try:
         user_response = state["user_response"]
-        validation_status = state["validation_status"]
+        validation_status = state.get("validation_status", {})
         mode = state["mode"]
-        fields_processed = state["fields_processed"]
+        fields_processed = state.get("fields_processed", {})
         prompt = load_template("chat_prompt_template.j2", {
             "mode": mode,
             "user_response": user_response,
@@ -240,8 +241,8 @@ def chat_node(state: FRIAgent) -> FRIAgent:
 def human_interrupt(state: FRIAgent) -> FRIAgent:
     """Handle human interrupt."""
     logger.info("Handling human interrupt.")
-    user_response = interrupt("Waiting for human intervention.")
-    user_response = user_response.get("content", "")
+    user_response = state.get("user_response", "")
+    print("Human interrupt received:", user_response)
     if user_response:
         state["user_response"] = user_response
         state["messages"].append(HumanMessage(content=user_response))
@@ -278,7 +279,8 @@ friagent_builder.add_conditional_edges(
     route_to_chat_or_audio,
     {
         "inputs_audio": "get_inputs_for_mode",
-        "chat_node": "chat_node"
+        "chat_node": "chat_node",
+        END: END
     }
 )
 friagent_builder.add_edge("get_inputs_for_mode", "extract_info_from_transcription")
@@ -298,4 +300,4 @@ friagent_builder.add_edge("validate_extracted_info", "update_towing_form")
 friagent_builder.add_edge("update_towing_form", END)
 
 checkpoint_saver = InMemorySaver()
-friagent = friagent_builder.compile(checkpoint_saver=checkpoint_saver)
+friagent = friagent_builder.compile(checkpointer=checkpoint_saver)

@@ -1,15 +1,15 @@
 """User and System related API endpoints."""
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from src.app.core.log_config import setup_logging
 from src.app.services.user_service import (
     fetch_user_by_name,
     fetch_insurance_details_by_vehicle_id,
     fetch_session_id_by_user_vechicle_id,
-    fetch_messages_by_session_id,
     create_session_id,
     fetch_vehicle_by_user_id,
 
 )
+from src.app.services.messages import fetch_messages_by_session_id
 from src.app.apis.schemas.user_system_schema import CreateSessionSchema
 from src.app.apis.deps import DBClientDep
 
@@ -17,10 +17,10 @@ logger = setup_logging("USERS & SYSTEM API")
 
 router = APIRouter(prefix="/users_system", tags=["User & System endpoints"])
 
-@router.get("/system_user/get_user_details{user_name}", summary="Get User Details", tags=["User & System"])
+@router.get("/get_user_details/{user_name}", summary="Get User Details", tags=["User & System"])
 def get_user_details(user_name: str, db_client: DBClientDep) -> dict:
     """
-    Endpostr to get user details by user ID.
+    Endpoint to get user details by user ID.
     """
     user_info = fetch_user_by_name(db_client, user_name)
 
@@ -31,10 +31,10 @@ def get_user_details(user_name: str, db_client: DBClientDep) -> dict:
     logger.info(f"User {user_name} details retrieved successfully.")
     return user_info
 
-@router.get("/system_user/get_vehicle_details{user_id}", summary="Get Vehicle Details", tags=["User & System"])
+@router.get("/get_vehicle_details/{user_id}", summary="Get Vehicle Details", tags=["User & System"])
 def get_vehicle_details(user_id: str, db_client: DBClientDep) -> dict:
     """
-    Endpostr to get vehicle details by user ID.
+    Endpoint to get vehicle details by user ID.
     """
     vehicle_info = fetch_vehicle_by_user_id(db_client, user_id)
 
@@ -45,10 +45,10 @@ def get_vehicle_details(user_id: str, db_client: DBClientDep) -> dict:
     logger.info(f"Vehicle details for user ID {user_id} retrieved successfully.")
     return vehicle_info
 
-@router.get("/system_user/get_insurance_by_vehicle{vehicle_id}", summary="Get Insurance Details by Vehicle ID", tags=["User & System"])
+@router.get("/get_insurance_by_vehicle/{vehicle_id}", summary="Get Insurance Details by Vehicle ID", tags=["User & System"])
 def get_insurance_by_vehicle(vehicle_id: str, db_client: DBClientDep) -> dict:
     """
-    Endpostr to get insurance details by vehicle ID.
+    Endpoint to get insurance details by vehicle ID.
     """
     insurance_info = fetch_insurance_details_by_vehicle_id(db_client, vehicle_id)
 
@@ -59,12 +59,12 @@ def get_insurance_by_vehicle(vehicle_id: str, db_client: DBClientDep) -> dict:
     logger.info(f"Insurance details for vehicle ID {vehicle_id} retrieved successfully.")
     return insurance_info
 
-@router.post("/system_user/create_session", summary="Create Session", tags=["User & System"])
+@router.post("/create_session", summary="Create Session", tags=["User & System"])
 def create_session(session_data: CreateSessionSchema, db_client: DBClientDep) -> dict:
     """
-    Endpostr to create a new session for a user and vehicle.
+    Endpoint to create a new session for a user and vehicle.
     """
-    session_id = create_session_id(db_client, session_data.user_id, session_data.vehicle_id)
+    session_id = create_session_id(db_client, session_data.user_id, session_data.vehicle_id, session_data.user_name)
     if not session_id:
         logger.error("Failed to create session.")
         raise HTTPException(status_code=500, detail="Failed to create session")
@@ -72,18 +72,18 @@ def create_session(session_data: CreateSessionSchema, db_client: DBClientDep) ->
     logger.info(f"Session created successfully with ID {session_id}.")
     return {"session_id": session_id}
 
-@router.get("/system_user/get_session_id{user_id}/{vehicle_id}", summary="Get Session ID", tags=["User & System"])
-def get_user_session_id(user_id: str, vehicle_id: str, db_client: DBClientDep) -> str:
+@router.get("/get_session_id/{user_id}/{vehicle_id}", summary="Get Session ID", tags=["User & System"])
+def get_user_session_id(user_id: str, vehicle_id: str, db_client: DBClientDep) -> dict:
     """
     Helper function to get session ID by user ID and vehicle ID.
     """
     session_id = fetch_session_id_by_user_vechicle_id(db_client, user_id, vehicle_id)
     return session_id
 
-@router.get("/system_user/get_messages{session_id}", summary="Get Messages by Session ID", tags=["User & System"])
+@router.get("/get_messages/{session_id}", summary="Get Messages by Session ID", tags=["User & System"])
 def get_messages(session_id: str, db_client: DBClientDep) -> list:
     """
-    Endpostr to get messages by session ID.
+    Endpoint to get messages by session ID.
     """
     messages = fetch_messages_by_session_id(db_client, session_id)
 

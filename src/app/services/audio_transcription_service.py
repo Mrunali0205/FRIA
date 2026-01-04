@@ -1,4 +1,7 @@
 """Audio transcription services."""
+import uuid
+import datetime
+import asyncio
 import azure.cognitiveservices.speech as speechsdk
 from src.app.utils.config import settings
 from src.app.core.log_config import setup_logging
@@ -10,54 +13,75 @@ SPEECH_KEY = settings.AZURE_SPEECH_KEY if hasattr(settings, "AZURE_SPEECH_KEY") 
 SPEECH_REGION = settings.AZURE_SPEECH_REGION if hasattr(settings, "AZURE_SPEECH_REGION") else None
 
 
-def transcribe_mic(language: str = "en-US"):
-    """
-    Transcribe audio from the default microphone using Azure Speech-to-Text.
-    Used for voice intake on CCC First Responder UI.
-    """
-
-    if not SPEECH_KEY or not SPEECH_REGION:
-        return "Missing AZURE_SPEECH_KEY or AZURE_SPEECH_REGION in environment."
-
-    try:
-        logger.info("Starting microphone transcription...")
-        speech_config = speechsdk.SpeechConfig(
-            subscription=SPEECH_KEY, 
+class AzureSpeechRecognizer:
+    """Azure Speech-to-Text recognizer using microphone input."""
+    def __init__(
+        self,
+        language: str = "en-US"
+    ):
+        """Initialize speech recognizer + events."""
+        self.speech_config = speechsdk.SpeechConfig(
+            subscription=SPEECH_KEY,
             region=SPEECH_REGION
         )
-        speech_config.speech_recognition_language = language
+        self.speech_config.speech_recognition_language = language
 
-        logger.info("Configuring audio input from default microphone...")
-        audio_config = speechsdk.AudioConfig(use_default_microphone=True)
-        recognizer = speechsdk.SpeechRecognizer(
-            speech_config=speech_config,
-            audio_config=audio_config
+        self.audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+        self.recognizer = speechsdk.SpeechRecognizer(
+            speech_config=self.speech_config,
+            audio_config=self.audio_config
         )
-        
-        logger.info("Listening for speech...")
-        result = recognizer.recognize_once()
 
-        if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-            logger.info("Speech recognized successfully.")
-            return result.text
+        self.recognizer.recognizing.connect(self._on_recognizing)
+        self.recognizer.recognized.connect(self._on_recognized)
+        self.recognizer.session_started.connect(self._on_session_started)
+        self.recognizer.session_stopped.connect(self._on_session_stopped)
+        self.recognizer.canceled.connect(self._on_canceled)
+        self.recognized_speech = ""
 
-        elif result.reason == speechsdk.ResultReason.NoMatch:
-            logger.warning("No speech could be recognized.")
-            return "No speech detected."
+    def _on_recognizing(self, evt):
+        """Fires on partial recognition results."""
+        logger.info(f"[INTERIM] {evt.result.text}")
 
+    def _on_recognized(self, evt):
+        """Fires on final recognition result."""
+        if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            self.recognized_speech += evt.result.text + " "
         else:
-            details = result.cancellation_details
-            return f"Error: {details.reason} — {details.error_details}"
+            logger.info("[NO MATCH] No speech recognized.")
 
-    except Exception as e:
-        return f"Exception: {str(e)}"
+    def _on_session_started(self, evt):
+        logger.info("[SESSION STARTED]")
+    
+    def _on_session_stopped(self, evt):
+        logger.info("[SESSION STOPPED]")
+
+    def _on_canceled(self, evt):
+        logger.error(f"[CANCELED] Reason: {evt.reason}")
+
+    def start(self):
+        """Asynchronously start continuous recognition."""
+        logger.info("Starting continuous recognition...")
+        start_future = self.recognizer.start_continuous_recognition_async()
+        start_future.get()  
+        logger.info("Continuous recognition started.")
+
+    def stop(self):
+        """Asynchronously stop continuous recognition."""
+        logger.info("Stopping continuous recognition...")
+        stop_future = self.recognizer.stop_continuous_recognition_async()
+        stop_future.get()
+        logger.info("Continuous recognition stopped.")
+
 
 
 def add_audio_transcription(db_client: DBClientDep, session_id: str, user_id: str, transcription: str) -> None:
     """
     Add an audio transcription message to the database.
     """
+    transcription_id = str(uuid.uuid4())
+    recorded_at = datetime.datetime.now(datetime.timezone.utc)
     db_client.insert(
-        query="INSERT INTO audio_transcripts (session_id, user_id, transcription_text) VALUES (:session_id, :user_id, :transcription_text)",
-        values={"session_id": session_id, "user_id": user_id, "transcription_text": transcription}
+        query="INSERT INTO audio_transcripts (id, session_id, user_id, transcription_text, created_at) VALUES (:id, :session_id, :user_id, :transcription_text, :created_at)",
+        values={"id": transcription_id, "session_id": session_id, "user_id": user_id, "transcription_text": transcription, "created_at": recorded_at}
     )

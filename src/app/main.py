@@ -7,7 +7,6 @@ from src.app.core.config import settings
 from src.app.apis.v1 import location_api, users_api, agent_api, audio_api
 
 app = FastAPI(
-    root_path="/api/v1",
     title="FRIA Agent and Services API",
     description="Server for First Responder Intelligent Agent and related services.",
     version="1.0.0",
@@ -35,7 +34,7 @@ def health_startup():
     """Readiness check endpoint."""
     return {"status": "started"}
 
-app.include_router(prefix="/api/v1", router=location_api.router)
-app.include_router(prefix="/api/v1", router=users_api.router)
-app.include_router(prefix="/api/v1", router=agent_api.router)
-app.include_router(prefix="/api/v1", router=audio_api.router)
+app.include_router(location_api.router, prefix="/api/v1")
+app.include_router(users_api.router, prefix="/api/v1")
+app.include_router(agent_api.router, prefix="/api/v1")
+app.include_router(audio_api.router, prefix="/api/v1")

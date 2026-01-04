@@ -16,3 +16,11 @@ class FriaAgentInvokeSchema(BaseModel):
 class TowingGuideInvokeSchema(BaseModel):
     session_id: uuid.UUID
     towing_instruction: str
+
+class AgentInvokeSchema(BaseModel):
+    mode: str  # "chat" | "audio"
+    session_id: uuid.UUID
+    user_id: uuid.UUID
+    user_response: Optional[str] = None
+    vehicle_type: Optional[str] = None
+    recorded_transcription: Optional[str] = None

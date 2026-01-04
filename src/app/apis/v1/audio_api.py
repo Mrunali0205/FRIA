@@ -1,26 +1,33 @@
 """Audio API endpoints"""
-from fastapi import APIRouter, Depends, HTTPException
-from src.app.services.audio_transcription_service import transcribe_mic, add_audio_transcription
+from fastapi import APIRouter, HTTPException
+from src.app.services.audio_transcription_service import AzureSpeechRecognizer, add_audio_transcription
 from src.app.core.log_config import setup_logging
 from src.app.apis.deps import DBClientDep
+from src.app.apis.schemas.audio_schemas import RecordAudioSchema
 
 logger = setup_logging("AUDIO API")
+recognizer = AzureSpeechRecognizer()
 
 router = APIRouter(prefix="/audio", tags=["Audio Endpoints"])
 
-@router.post("/transcribe-mic", description="Transcribe audio from the default microphone.", tags=["Audio Service"])
-def record_and_transcribe(language: str = "en-US", db_client: DBClientDep = Depends(), session_id: str = None, user_id: str = None):
+@router.get("/start_recording", description="Start transcription from the default microphone.", tags=["Audio Service"])
+def start_recording(): 
     """
     Record audio from the default microphone and transcribe it using Azure Speech-to-Text.
     """
-    transcription = transcribe_mic(language)
-    if transcription.startswith("Error:") or transcription.startswith("Exception:") or transcription == "No speech detected.":
-        logger.error(f"Transcription failed: {transcription}")
-        raise HTTPException(status_code=500, detail=transcription)
-    logger.info("Transcription successful.")
+    recognizer.start()
+    recognizer.recognized_speech = "" 
+    return {"message": "Transcription started. Speak into the microphone."}
+
+@router.post("/stop_recording", description="Stop the ongoing transcription.", tags=["Audio Service"])
+def stop_recording(db_client: DBClientDep, record_audio_schema: RecordAudioSchema):
+    """
+    Stop the ongoing transcription process.
+    """
+    recognizer.stop()
+    transcription = recognizer.recognized_speech.strip()
     if transcription:
         logger.info("adding transcription to database")
-        # Assuming you have session_id and user_id available in this context
-        # You might need to modify the function signature to accept these parameters
-        add_audio_transcription(db_client, session_id, user_id, transcription)
-    return {"transcription": transcription}
+        add_audio_transcription(db_client, record_audio_schema.session_id, record_audio_schema.user_id, transcription)
+    logger.info("Transcription stopped.")
+    return {"message": "Transcription stopped successfully."}

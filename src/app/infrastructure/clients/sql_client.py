@@ -1,3 +1,4 @@
+"""SQL Client for executing raw SQL queries using SQLAlchemy engine."""
 from src.app.core.log_config import setup_logging
 from contextlib import contextmanager
 from src.app.core.database import engine
@@ -20,12 +21,12 @@ class SQLClient:
         Context manager to get a database connection.
         Sets up a transactional DB connection.
         """
-        with self.engine.connect() as connection:
+        with self.engine.begin() as connection:
             try:
                 yield connection
             except SQLAlchemyError as e:
                 logger.error(f"[Session] An error occurred during session: {e}")
-                connection.rollback()
+                raise
             finally:
                 logger.info("[Session] Closing database connection.")
 
@@ -129,13 +130,13 @@ class SQLClient:
         try:
             with self.session() as connection:
                 result = connection.execute(text(query), params or {})
-                row = result.fetchone()
+                row = result.mappings().first() if as_dict else result.first()
                 if row:
                     if as_dict:
                         record = dict(row)
                     else:
                         record = row
-                    logger.info(f"[Fetch One] Retrieved record: {record}")
+                    logger.info(f"[Fetch One] Retrieved record")
                     return record
                 else:
                     logger.info("[Fetch One] No record found.")
