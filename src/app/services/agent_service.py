@@ -8,7 +8,7 @@ from src.app.services.messages import add_message
 
 logger = setup_logging("AGENT SERVICE")
 
-def initialize_agent(user_id: str, session_id: str) -> dict:
+def initialize_agent(db: DBClientDep, user_id: str, session_id: str, mode: str, recorded_transcription: str = None, vehicle_type: str = None) -> dict:
     """Initialize the FRIA agent for a specific user."""
     try:
         thread_config = {
@@ -20,9 +20,21 @@ def initialize_agent(user_id: str, session_id: str) -> dict:
         agent_state = friagent.invoke(
             {
                 "agent_state": "initiate",
+                "mode": mode,
+                "transcription": recorded_transcription,
+                "vehicle_type": vehicle_type,
             },
             config=thread_config
         )
+
+        if mode == "chat" and agent_state["agent_query"]:
+            add_message(
+                db_client=db,
+                session_id=session_id,
+                user_id=user_id,
+                role="agent",
+                content=agent_state["agent_query"],
+            )
 
         return {
             "status": "success",
@@ -39,8 +51,8 @@ def initialize_agent(user_id: str, session_id: str) -> dict:
             "session_id": session_id,
         }   
 
-def agent_continue(db: DBClientDep, user_id: str, session_id: str, mode: str, vehicle_type: str = None,
-                   user_response: str = None, transcription: str = None,) -> dict:
+def agent_continue(db: DBClientDep, user_id: str, session_id: str, vehicle_type: str = None,
+                   user_response: str = None) -> dict:
     """Continue the FRIA agent interaction for a specific user."""
     try:
         thread_config = {
@@ -55,15 +67,13 @@ def agent_continue(db: DBClientDep, user_id: str, session_id: str, mode: str, ve
                 session_id=session_id,
                 user_id=user_id,
                 role="user",
-                content=user_response if mode == "chat" else transcription,
+                content=user_response
             )
             
         agent_state = friagent.invoke(
             {
                 "agent_state": "in_progress",
-                "mode": mode,
-                "vehicle_type": vehicle_type if mode == "audio" else None,
-                "recorded_transcription": transcription if mode == "audio" else None,
+                "vehicle_type": vehicle_type,
                 "user_response": user_response,
             },
             config=thread_config

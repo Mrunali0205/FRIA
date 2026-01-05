@@ -29,12 +29,12 @@ You must support TWO validation cases:
 
     CASE 2: Only a single field is provided for chat mode
     - The agent question and the user response will be provided instead of the full transcription.
-    - Validate the uuser response.
+    - Validate the user response.
     - Output JSON with a single key-value pair using the same rules above.
 
 **OUTPUT FORMAT**:
 For case1 audio mode:
-    ```json
+    ```json```
     {
     "incident": MISSING/ "FAILED: <short reason>"/ "SUCCESSED",
     "operability": MISSING/ "FAILED: <short reason>"/ "SUCCESSED",
@@ -44,9 +44,13 @@ For case1 audio mode:
     ```
 
 For case2 chat mode:
+    you should consider the agent question, user response and extracted_data to validate only a single field.
+    basically the extracted data is information extracted from the user response based on the query, focuse on the extracted data.
+    if the extracted data is `MISSING` then return MISSING for that field, if the extracted data is `FAILED` then return FAILED for that field.
+    field_to_validate is the field name to be validated.
     ```json
     {
-    "<field_name>": MISSING/ "FAILED: <short reason>"/ "SUCCESSED"
+    "{{field_to_validate}}": MISSING/ "FAILED: <short reason>"/ "SUCCESSED"
     }
     ```
 
@@ -55,7 +59,7 @@ mode: {{ mode }}  # "audio" or "chat"
 {% if mode == "audio" %}
     CASE 1 Input (Multiple Fields):
     Original transcription:
-    {{ transcription_text }}
+    {{ transcription }}
 
     Extracted data:
     {{ extracted_data }}
@@ -67,5 +71,8 @@ mode: {{ mode }}  # "audio" or "chat"
 
     User response:
     {{ user_response }}
+
+    Extracted data:
+    {{ extracted_data }}
 {% endif %}
 

@@ -3,24 +3,15 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
 
-class FriaAgentInvokeSchema(BaseModel):
+class AgentInitializeSchema(BaseModel):
+    user_id: uuid.UUID
     session_id: uuid.UUID
-    user_message: Optional[str] = None
-    lat: Optional[float] = None
-    lon: Optional[float] = None
-    audio_transcript: Optional[str] = None
-    chat_history: List[Dict[str, str]] = Field(default_factory=list)
-    current_data: Dict[str, Any] = Field(default_factory=dict)
+    mode: str
+    recorded_transcription: Optional[str] = None
+    vehicle_type: Optional[str] = None
 
-
-class TowingGuideInvokeSchema(BaseModel):
-    session_id: uuid.UUID
-    towing_instruction: str
-
-class AgentInvokeSchema(BaseModel):
-    mode: str  # "chat" | "audio"
+class AgentContinueSchema(BaseModel):
     session_id: uuid.UUID
     user_id: uuid.UUID
     user_response: Optional[str] = None
     vehicle_type: Optional[str] = None
-    recorded_transcription: Optional[str] = None

@@ -17,7 +17,8 @@ def start_recording():
     """
     recognizer.start()
     recognizer.recognized_speech = "" 
-    return {"message": "Transcription started. Speak into the microphone."}
+    return {"message": "Transcription started. Speak into the microphone.",
+            "transcription": ""}
 
 @router.post("/stop_recording", description="Stop the ongoing transcription.", tags=["Audio Service"])
 def stop_recording(db_client: DBClientDep, record_audio_schema: RecordAudioSchema):
@@ -30,4 +31,5 @@ def stop_recording(db_client: DBClientDep, record_audio_schema: RecordAudioSchem
         logger.info("adding transcription to database")
         add_audio_transcription(db_client, record_audio_schema.session_id, record_audio_schema.user_id, transcription)
     logger.info("Transcription stopped.")
-    return {"message": "Transcription stopped successfully."}
+    return {"message": "Transcription stopped successfully.",
+            "transcription": transcription}
