@@ -13,11 +13,9 @@ from jinja2 import Environment, FileSystemLoader
 from src.app.core.log_config import setup_logging
 from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
 from src.app.services.gps_location_service import reverse_geocode
-from src.mcp_servers.towing_client import TowingMCPClient
 
 logger = setup_logging("FRIA AGENT")
 llm = AzureOpenAIClient()
-mcp_client = TowingMCPClient()
 
 base_dir = os.path.dirname(os.path.dirname(__file__))
 prompt_templates_path = os.path.join(base_dir, "prompt_management")

@@ -29,7 +29,7 @@ def get_user_details(user_name: str, db_client: DBClientDep) -> dict:
         raise HTTPException(status_code=404, detail="User not found")
     
     logger.info(f"User {user_name} details retrieved successfully.")
-    return user_info
+    return {"status_code": 200, "user_info": user_info}
 
 @router.get("/get_vehicle_details/{user_id}", summary="Get Vehicle Details", tags=["User & System"])
 def get_vehicle_details(user_id: str, db_client: DBClientDep) -> dict:
@@ -43,7 +43,7 @@ def get_vehicle_details(user_id: str, db_client: DBClientDep) -> dict:
         raise HTTPException(status_code=404, detail="Vehicle not found")
     
     logger.info(f"Vehicle details for user ID {user_id} retrieved successfully.")
-    return vehicle_info
+    return {"status_code": 200, "vehicle_info": vehicle_info}
 
 @router.get("/get_insurance_by_vehicle/{vehicle_id}", summary="Get Insurance Details by Vehicle ID", tags=["User & System"])
 def get_insurance_by_vehicle(vehicle_id: str, db_client: DBClientDep) -> dict:
@@ -57,7 +57,7 @@ def get_insurance_by_vehicle(vehicle_id: str, db_client: DBClientDep) -> dict:
         raise HTTPException(status_code=404, detail="Insurance details not found")
     
     logger.info(f"Insurance details for vehicle ID {vehicle_id} retrieved successfully.")
-    return insurance_info
+    return {"status_code": 200, "insurance_info": insurance_info}
 
 @router.post("/create_session", summary="Create Session", tags=["User & System"])
 def create_session(session_data: CreateSessionSchema, db_client: DBClientDep) -> dict:
@@ -70,7 +70,7 @@ def create_session(session_data: CreateSessionSchema, db_client: DBClientDep) ->
         raise HTTPException(status_code=500, detail="Failed to create session")
 
     logger.info(f"Session created successfully with ID {session_id}.")
-    return {"session_id": session_id}
+    return {"status_code": 200, "session_id": session_id}
 
 @router.get("/get_session_id/{user_id}/{vehicle_id}", summary="Get Session ID", tags=["User & System"])
 def get_user_session_id(user_id: str, vehicle_id: str, db_client: DBClientDep) -> dict:
@@ -78,7 +78,7 @@ def get_user_session_id(user_id: str, vehicle_id: str, db_client: DBClientDep) -
     Helper function to get session ID by user ID and vehicle ID.
     """
     session_id = fetch_session_id_by_user_vechicle_id(db_client, user_id, vehicle_id)
-    return session_id
+    return {"status_code": 200, "session_id": session_id}
 
 @router.get("/get_messages/{session_id}", summary="Get Messages by Session ID", tags=["User & System"])
 def get_messages(session_id: str, db_client: DBClientDep) -> list:
@@ -92,4 +92,4 @@ def get_messages(session_id: str, db_client: DBClientDep) -> list:
         raise HTTPException(status_code=404, detail="No messages found for this session")
 
     logger.info(f"Messages for session ID {session_id} retrieved successfully.")
-    return messages
+    return {"status_code": 200, "messages": messages}

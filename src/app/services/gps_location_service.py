@@ -41,15 +41,19 @@ def search_address(query: str) -> List[Dict]:
     except Exception:
         return []
 
-def ip_geolocation() -> tuple[Optional[float], Optional[float]]:
+def auto_detect_location() -> dict:
+    """
+    Get approximate latitude/longitude based on IP address.
+    Returns (None, None) if lookup fails."""
     try:
         res = requests.get("https://ipinfo.io/json", timeout=5)
         loc = res.json().get("loc")
         if not loc:
-            return None, None
-
+            return {}
         lat_str, lon_str = loc.split(",")
-        return float(lat_str), float(lon_str)
+        lat, lon =float(lat_str), float(lon_str)
+        location = geolocator.reverse((lat, lon), language="en")
+        return {"address": location.address if location else None, "lat": lat, "lon": lon}
 
     except Exception:
-        return None, None
+        return {}

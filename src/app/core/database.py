@@ -1,10 +1,10 @@
 """
 Database utility module for setting up SQLAlchemy engine and session.
 """
-import os
+from fastapi import Request
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.app.utils.config import settings
+from src.app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 
@@ -32,3 +32,8 @@ def get_db():
     finally:
         db.close()
 
+def get_mongo_db(request: Request):
+    """
+    Use this dependency in FastAPI routes to get the MongoDB database instance.
+    """
+    return request.app.state.mongodb

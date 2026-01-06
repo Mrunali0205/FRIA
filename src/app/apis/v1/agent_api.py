@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from src.app.services.agent_service import (initialize_agent, agent_continue)
 from src.app.apis.deps import DBClientDep
 from src.app.apis.schemas.fria_agent_schema import AgentInitializeSchema, AgentContinueSchema
@@ -21,7 +21,10 @@ def api_initialize_agent(agent_initialize_data: AgentInitializeSchema, db_client
                               recorded_transcription = agent_initialize_data.recorded_transcription,
                               vehicle_type = agent_initialize_data.vehicle_type
                              )
-    return response
+    if response["status"] == "error":
+        logger.error(f"Failed to initialize agent: {response['message']}")
+        raise HTTPException(status_code=500, detail=response["message"])
+    return {"status_code": 200, "data": response}
 
 @router.post("/continue", summary="Continue FRIA Agent Interaction", tags=["Agent Service"])
 def api_continue_agent_interaction(agent_continue_data: AgentContinueSchema, db_client: DBClientDep):
@@ -34,4 +37,7 @@ def api_continue_agent_interaction(agent_continue_data: AgentContinueSchema, db_
                               vehicle_type = agent_continue_data.vehicle_type,
                               user_response = agent_continue_data.user_response
                              )
-    return response
+    if response["status"] == "error":
+        logger.error(f"Failed to continue agent interaction: {response['message']}")
+        raise HTTPException(status_code=500, detail=response["message"])
+    return {"status_code": 200, "data": response}

@@ -15,9 +15,15 @@ def start_recording():
     """
     Record audio from the default microphone and transcribe it using Azure Speech-to-Text.
     """
-    recognizer.start()
-    recognizer.recognized_speech = "" 
-    return {"message": "Transcription started. Speak into the microphone.",
+    try:
+        logger.info("Starting transcription...")
+        recognizer.recognized_speech = ""
+        recognizer.start()
+    except Exception as e:
+        logger.error(f"Error starting transcription: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start transcription.")
+    
+    return {"status_code": 200, "message": "Transcription started. Speak into the microphone.",
             "transcription": ""}
 
 @router.post("/stop_recording", description="Stop the ongoing transcription.", tags=["Audio Service"])
@@ -25,11 +31,16 @@ def stop_recording(db_client: DBClientDep, record_audio_schema: RecordAudioSchem
     """
     Stop the ongoing transcription process.
     """
-    recognizer.stop()
+    try:
+        logger.info("Stopping transcription...")
+        recognizer.stop()
+    except Exception as e:
+        logger.error(f"Error stopping transcription: {e}")
+        raise HTTPException(status_code=500, detail="Failed to stop transcription.")
     transcription = recognizer.recognized_speech.strip()
     if transcription:
-        logger.info("adding transcription to database")
+        logger.info("Adding transcription to database")
         add_audio_transcription(db_client, record_audio_schema.session_id, record_audio_schema.user_id, transcription)
     logger.info("Transcription stopped.")
-    return {"message": "Transcription stopped successfully.",
+    return {"status_code": 200, "message": "Transcription stopped successfully.",
             "transcription": transcription}

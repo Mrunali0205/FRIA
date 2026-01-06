@@ -1,9 +1,8 @@
 """Audio transcription services."""
 import uuid
 import datetime
-import asyncio
 import azure.cognitiveservices.speech as speechsdk
-from src.app.utils.config import settings
+from src.app.core.config import settings
 from src.app.core.log_config import setup_logging
 from src.app.apis.deps import DBClientDep
 

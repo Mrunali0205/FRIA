@@ -1,7 +1,7 @@
 import openai
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 from src.app.core.log_config import setup_logging
-from src.app.utils.config import settings   # ← FIXED import
+from src.app.core.config import settings   # ← FIXED import
 
 logger = setup_logging("AzureOpenAIClient")
 class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
