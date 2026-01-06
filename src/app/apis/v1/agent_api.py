@@ -7,9 +7,9 @@ from src.app.core.log_config import setup_logging
 
 logger = setup_logging("AGENT API")
 
-router = APIRouter(prefix="/agent", tags=["Agent Services"])
+router = APIRouter(prefix="/agent", tags=["Agent Endpoints"])
 
-@router.post("/initialize", summary="Initialize FRIA Agent", tags=["Agent Service"])
+@router.post("/initialize", summary="Initialize FRIA Agent")
 def api_initialize_agent(agent_initialize_data: AgentInitializeSchema, db_client: DBClientDep):
     """
     Endpoint to initialize the FRIA agent for a specific user.
@@ -26,7 +26,7 @@ def api_initialize_agent(agent_initialize_data: AgentInitializeSchema, db_client
         raise HTTPException(status_code=500, detail=response["message"])
     return {"status_code": 200, "data": response}
 
-@router.post("/continue", summary="Continue FRIA Agent Interaction", tags=["Agent Service"])
+@router.post("/continue", summary="Continue FRIA Agent Interaction")
 def api_continue_agent_interaction(agent_continue_data: AgentContinueSchema, db_client: DBClientDep):
     """
     Endpoint to continue the FRIA agent interaction.

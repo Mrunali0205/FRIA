@@ -110,11 +110,14 @@ class SQLClient:
             with self.session() as connection:
                 result = connection.execute(text(query), params or {})
                 if as_dict:
-                    rows = [dict(row) for row in result.fetchall()]
+                    print(result.fetchall())
+                    rows = [{row[0] : row[1]} for row in result.fetchall()]
+                    logger.info(f"[Fetch All] Retrieved {len(rows)} records.")
+                    return rows
                 else:
                     rows = result.fetchall()
-                logger.info(f"[Fetch All] Retrieved {len(rows)} records.")
-                return rows
+                    logger.info(f"[Fetch All] Retrieved {len(rows)} records.")
+                    return rows
         except SQLAlchemyError as e:
             logger.error(f"[Fetch All] Error executing fetch: {e}")
             raise

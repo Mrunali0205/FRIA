@@ -10,7 +10,7 @@ recognizer = AzureSpeechRecognizer()
 
 router = APIRouter(prefix="/audio", tags=["Audio Endpoints"])
 
-@router.get("/start_recording", description="Start transcription from the default microphone.", tags=["Audio Service"])
+@router.get("/start_recording", description="Start transcription from the default microphone.")
 def start_recording(): 
     """
     Record audio from the default microphone and transcribe it using Azure Speech-to-Text.
@@ -26,7 +26,7 @@ def start_recording():
     return {"status_code": 200, "message": "Transcription started. Speak into the microphone.",
             "transcription": ""}
 
-@router.post("/stop_recording", description="Stop the ongoing transcription.", tags=["Audio Service"])
+@router.post("/stop_recording", description="Stop the ongoing transcription.")
 def stop_recording(db_client: DBClientDep, record_audio_schema: RecordAudioSchema):
     """
     Stop the ongoing transcription process.

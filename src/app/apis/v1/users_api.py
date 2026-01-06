@@ -17,7 +17,7 @@ logger = setup_logging("USERS & SYSTEM API")
 
 router = APIRouter(prefix="/users_system", tags=["User & System endpoints"])
 
-@router.get("/get_user_details/{user_name}", summary="Get User Details", tags=["User & System"])
+@router.get("/get_user_details/{user_name}", summary="Get User Details")
 def get_user_details(user_name: str, db_client: DBClientDep) -> dict:
     """
     Endpoint to get user details by user ID.
@@ -31,7 +31,7 @@ def get_user_details(user_name: str, db_client: DBClientDep) -> dict:
     logger.info(f"User {user_name} details retrieved successfully.")
     return {"status_code": 200, "user_info": user_info}
 
-@router.get("/get_vehicle_details/{user_id}", summary="Get Vehicle Details", tags=["User & System"])
+@router.get("/get_vehicle_details/{user_id}", summary="Get Vehicle Details")
 def get_vehicle_details(user_id: str, db_client: DBClientDep) -> dict:
     """
     Endpoint to get vehicle details by user ID.
@@ -45,7 +45,7 @@ def get_vehicle_details(user_id: str, db_client: DBClientDep) -> dict:
     logger.info(f"Vehicle details for user ID {user_id} retrieved successfully.")
     return {"status_code": 200, "vehicle_info": vehicle_info}
 
-@router.get("/get_insurance_by_vehicle/{vehicle_id}", summary="Get Insurance Details by Vehicle ID", tags=["User & System"])
+@router.get("/get_insurance_by_vehicle/{vehicle_id}", summary="Get Insurance Details by Vehicle ID")
 def get_insurance_by_vehicle(vehicle_id: str, db_client: DBClientDep) -> dict:
     """
     Endpoint to get insurance details by vehicle ID.
@@ -59,7 +59,7 @@ def get_insurance_by_vehicle(vehicle_id: str, db_client: DBClientDep) -> dict:
     logger.info(f"Insurance details for vehicle ID {vehicle_id} retrieved successfully.")
     return {"status_code": 200, "insurance_info": insurance_info}
 
-@router.post("/create_session", summary="Create Session", tags=["User & System"])
+@router.post("/create_session", summary="Create Session")
 def create_session(session_data: CreateSessionSchema, db_client: DBClientDep) -> dict:
     """
     Endpoint to create a new session for a user and vehicle.
@@ -72,7 +72,7 @@ def create_session(session_data: CreateSessionSchema, db_client: DBClientDep) ->
     logger.info(f"Session created successfully with ID {session_id}.")
     return {"status_code": 200, "session_id": session_id}
 
-@router.get("/get_session_id/{user_id}/{vehicle_id}", summary="Get Session ID", tags=["User & System"])
+@router.get("/get_session_id/{user_id}/{vehicle_id}", summary="Get Session ID")
 def get_user_session_id(user_id: str, vehicle_id: str, db_client: DBClientDep) -> dict:
     """
     Helper function to get session ID by user ID and vehicle ID.
@@ -80,8 +80,8 @@ def get_user_session_id(user_id: str, vehicle_id: str, db_client: DBClientDep) -
     session_id = fetch_session_id_by_user_vechicle_id(db_client, user_id, vehicle_id)
     return {"status_code": 200, "session_id": session_id}
 
-@router.get("/get_messages/{session_id}", summary="Get Messages by Session ID", tags=["User & System"])
-def get_messages(session_id: str, db_client: DBClientDep) -> list:
+@router.get("/get_messages/{session_id}", summary="Get Messages by Session ID")
+def get_messages(session_id: str, db_client: DBClientDep) -> dict:
     """
     Endpoint to get messages by session ID.
     """

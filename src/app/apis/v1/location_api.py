@@ -14,13 +14,13 @@ from src.app.services.gps_location_service import (
 router = APIRouter(prefix="/location", tags=["Location Endpoints"])
 
 
-@router.post("/search", description="Autocomplete / search address.", tags=["Location Service"])
+@router.post("/search", description="Autocomplete / search address.")
 def api_search_address(payload: ForwardSearchRequest):
     """Autocomplete / search address."""
     results = search_address(payload.query)
     return {"status_code": 200, "results": results}
 
-@router.post("/auto-detect-location", description="Get approximate location based on IP address.", tags=["Location Service"])
+@router.post("/auto-detect-location", description="Get approximate location based on IP address.")
 def api_auto_detect_location():
     """Approximate location based on IP address."""
     location = auto_detect_location()

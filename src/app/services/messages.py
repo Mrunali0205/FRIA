@@ -22,7 +22,7 @@ def fetch_messages_by_session_id(db_client: DBClientDep, session_id: str) -> lis
     Fetch messages from the database by session ID.
     """
     messages = db_client.fetch_all(
-        query="SELECT * FROM messages WHERE session_id=:session_id ORDER BY created_at ASC",
+        query="SELECT role, content FROM messages WHERE session_id=:session_id ORDER BY created_at ASC",
         params={"session_id": session_id}
     )
 
