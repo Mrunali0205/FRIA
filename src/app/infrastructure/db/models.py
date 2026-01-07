@@ -17,9 +17,13 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
+    """
+    Declarative base class for SQLAlchemy models.
+    """
     pass
 
 class UserProfile(Base):
+    """Model for user profiles."""
     __tablename__ = "user_profiles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -42,11 +46,11 @@ class UserProfile(Base):
     audio_transcripts = relationship("AudioTranscript", back_populates="user")
 
 class VehicleInfo(Base):
+    """Model for vehicle information."""
     __tablename__ = "vehicle_info"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"))
-    
     vehicle_make = Column(String, nullable=False)  # e.g., "Tesla"
     vehicle_model = Column(String, nullable=False)
     vehicle_year = Column(String, nullable=False)
@@ -68,6 +72,7 @@ class VehicleInfo(Base):
     tow_requests = relationship("TowRequest", back_populates="vehicle")
 
 class InsurancePolicyDetails(Base):
+    """Model for insurance policy details."""
     __tablename__ = "insurance_policy_details"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -92,6 +97,7 @@ class InsurancePolicyDetails(Base):
     tow_requests = relationship("TowRequest", back_populates="insurance_policy")
 
 class Session(Base):
+    """Model for user sessions."""
     __tablename__ = "sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -107,12 +113,12 @@ class Session(Base):
     #tow_request = relationship("TowRequest", back_populates="session", uselist=False)
 
 class Message(Base):
+    """Model for messages."""
     __tablename__ = "messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
     session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
-
     role = Column(String, nullable=False)  # "user" | "agent"
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -121,44 +127,47 @@ class Message(Base):
     user = relationship("UserProfile", back_populates="messages")
 
 class AudioTranscript(Base):
+    """Model for audio transcripts."""
     __tablename__ = "audio_transcripts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
     session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
-
     transcription_text = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
     user = relationship("UserProfile", back_populates="audio_transcripts")
     session = relationship("Session", back_populates="audio_transcripts")
 
 class geo_location(Base):
+    """
+    Model for geographic locations.
+    """
     __tablename__ = "geo_locations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
     session_id = Column(UUID(as_uuid=True), ForeignKey("sessions.id"), nullable=False)
-
     latitude = Column(String, nullable=False)
     longitude = Column(String, nullable=False)
     address = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    #relationships
+    user = relationship("UserProfile", back_populates="geo_locations")
+    session = relationship("Session", back_populates="geo_locations")
 
 class TowRequest(Base):
+    """Model for tow requests."""
     __tablename__ = "tow_requests"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("user_profiles.id"), nullable=False)
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("vehicle_info.id"), nullable=False)
     insurance_id = Column(UUID(as_uuid=True), ForeignKey("insurance_policy_details.id"), nullable=False)
-
     damage_description = Column(Text)
     accident_location_address = Column(Text)
     is_vehicle_operable = Column(String)
     reason_for_towing = Column(Text)
-
     finalized_at = Column(DateTime, default=datetime.utcnow)
 
     #relationships

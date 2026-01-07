@@ -1,17 +1,22 @@
 """Document services for handling MongoDB interactions."""
+import datetime
 from bson.objectid import ObjectId
-from src.app.infrastructure.db.mongo_db_models import TowingDocumentModel
+from src.app.infrastructure.db.mongo_db_models import ReadTowingDocument, InsertTowingDocument
 from src.app.core.log_config import setup_logging
 
 logger = setup_logging(__name__)
 
 async def insert_towing_document(
-    document: TowingDocumentModel,
+    document: InsertTowingDocument,
     mongodb
 ):
     """Insert a towing document into MongoDB."""
     try:
         doc_dict = document.dict()
+        doc_dict["is_completed"] = True
+        doc_dict["is_deleted"] = False
+        doc_dict["creation_time"] = int(datetime.datetime.timestamp(datetime.datetime.now()))
+        doc_dict["updated_time"] = int(datetime.datetime.timestamp(datetime.datetime.now()))
         result = await mongodb.towing_documents.insert_one(dict(doc_dict))
         logger.info(f"Towing document inserted with ID: {result.inserted_id}")
         return str(result.inserted_id)
@@ -29,7 +34,7 @@ async def get_towing_document_by_id(
         document = await mongodb.towing_documents.find_one({"_id": id})
         if document:
             logger.info(f"Towing document retrieved with ID: {document_id}")
-            return TowingDocumentModel(**document)
+            return ReadTowingDocument(**document)
         else:
             logger.warning(f"Towing document with ID {document_id} not found.")
             return None

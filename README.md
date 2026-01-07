@@ -4,7 +4,6 @@ First Responder Intelligent Agent
 This repository contains proof-of-concept agent for first responders that collects structured tow/intake data using an Agent-driven conversational UI and a Model Context Protocal (MCP) backend server for storing required fields. It includes:
 
 Quick start (Linux / macOS/ windows)
---------------------------+
 
 1. Clone the repository:
     ```bash
@@ -72,28 +71,21 @@ Quick start (Linux / macOS/ windows)
     ```bash
     python3 -m src.database.check_for_tables_or_seed_create
     ```
-Running the components
-----------------------
-
-The project has three cooperating pieces. Run them in separate terminals (or use a process manager):
-
-1. Create tables with seed data.
-
-Run the below command to check if the tables are ctreated or not, if not created it will create the necessary tables with seed data.
-
-    ```bash
-    python3 -m src.database.check_for_tables_or_seed_create
-    ```
     or 
     ```bash
     python3 src/database/check_for_tables_or_seed_create.py
     ```
 
-2. Backend FastAPI app
+8. Backend FastAPI app
 
 	 From the project root go to src directory and run:
 
      ```bash
 	 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
      ```
+
+9. To get list of endpoints/payloads/schema, use this link to get FastAPI SwaggerUI
+
+    `http://127.0.0.1:8000/docs`
+
 

@@ -1,7 +1,13 @@
 """GPS location services."""
 import requests
+import uuid
+import datetime
 from typing import Optional, List, Dict
 from geopy.geocoders import Nominatim
+from src.app.apis.deps import DBClientDep
+from src.app.core.log_config import setup_logging
+
+logger = setup_logging("GPS LOCATION SERVICE")
 
 geolocator = Nominatim(user_agent="tesla_tow_app")
 
@@ -57,3 +63,31 @@ def auto_detect_location() -> dict:
 
     except Exception:
         return {}
+
+def insert_gps_location(
+    user_id: str,
+    session_id: str,
+    address: str,
+    latitude: float,
+    longitude: float,
+    db_client: DBClientDep
+):
+    """Insert GPS location into the database."""
+    
+    status = db_client.insert(
+        query="INSERT INTO gps_locations (id, user_id, session_id, address, latitude, longitude, created_at) VALUES (:id, :user_id, :session_id, :address, :latitude, :longitude, :created_at)",
+        values={
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "session_id": session_id,
+            "address": address,
+            "latitude": latitude,
+            "longitude": longitude,
+            "created_at": datetime.datetime.now(datetime.timezone.utc)
+        }
+    )
+    logger.info(f"Inserted GPS location for user_id={user_id}, session_id={session_id}, address={address}")
+    if status.get("status") != "success":
+        logger.error(f"Failed to insert GPS location for user_id={user_id}, session_id={session_id}")
+        return {"insert_success": False, "message": "Failed to insert GPS location."}
+    return {"insert_success": True, "message": "GPS location inserted successfully."}

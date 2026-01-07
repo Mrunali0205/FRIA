@@ -68,11 +68,11 @@ def create_session_id(db_client: DBClientDep, user_id: str, vehicle_id: str, use
     """
     Create a new session ID for the user.
     """
-    random_id = str(uuid.uuid4())
+    generated_session_id = str(uuid.uuid4())
     time = datetime.datetime.now(datetime.timezone.utc)
     session_id = db_client.insert_returning_id(
         query="INSERT INTO sessions (id, user_id, vehicle_id, user_name, started_at) VALUES (:id, :user_id, :vehicle_id, :user_name, :started_at) RETURNING id",
-        values={"id": random_id, "user_id": user_id, "vehicle_id": vehicle_id, "user_name": user_name, "started_at": time}
+        values={"id": generated_session_id, "user_id": user_id, "vehicle_id": vehicle_id, "user_name": user_name, "started_at": time}
     )
 
     return session_id

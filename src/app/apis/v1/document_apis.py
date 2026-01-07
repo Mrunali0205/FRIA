@@ -1,16 +1,12 @@
 """Document APIs for handling MongoDB interactions."""
-import io
-import imghdr
-from PIL import Image
 from fastapi import APIRouter, Depends, HTTPException, status
-from pathlib import Path
 from fastapi.responses import StreamingResponse
 from src.app.services.document_services import (insert_towing_document, 
                                                 get_towing_document_by_id, 
                                                 update_towing_document)
 from src.app.core.database import get_mongo_db
 from src.app.services.generate_pdf import create_pdf_from_json
-from src.app.infrastructure.db.mongo_db_models import TowingDocumentModel
+from src.app.infrastructure.db.mongo_db_models import InsertTowingDocument
 from src.app.core.log_config import setup_logging
 
 logger = setup_logging(__name__)
@@ -19,7 +15,7 @@ router = APIRouter(prefix="/documents", tags=["Document Endpoints"])
 
 @router.post("/insert-towing-documents", status_code=status.HTTP_201_CREATED)
 async def create_towing_document(
-    document: TowingDocumentModel,
+    document: InsertTowingDocument,
     mongodb=Depends(get_mongo_db)
 ):
     """API endpoint to create a towing document in MongoDB."""
@@ -62,7 +58,7 @@ async def modify_towing_document(
 
 
 @router.post("/download-towing-pdf", status_code=status.HTTP_200_OK)
-async def download_towing_pdf(towing_document: TowingDocumentModel):
+async def download_towing_pdf(towing_document: InsertTowingDocument):
     """
     Generate a PDF from the provided towing_document JSON and return it as a downloadable file.
     """

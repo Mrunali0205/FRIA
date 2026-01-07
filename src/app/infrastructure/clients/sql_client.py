@@ -73,9 +73,12 @@ class SQLClient:
                 if isinstance(values, list) and isinstance(values[0], dict):
                     connection.execute(text(query), values)
                     logger.info(f"[Insert] (Batch) Inserted multiple records.")
+                    return {"status": "success"}
                 else:
                     connection.execute(text(query), values or {})
                     logger.info(f"[Insert] Inserted single record.")
+                    return {"status": "success"}
+
         except SQLAlchemyError as e:
             logger.error(f"[Insert] Error executing insert: {e}")
             raise

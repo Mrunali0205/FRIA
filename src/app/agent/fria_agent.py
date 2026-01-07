@@ -8,10 +8,7 @@ from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from jinja2 import Environment, FileSystemLoader
-
-
 from src.app.core.log_config import setup_logging
-from src.app.services.document_services import insert_towing_document, update_towing_document
 from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
 
 logger = setup_logging("FRIA AGENT")
@@ -81,7 +78,7 @@ def route_to_chat_or_audio(state: FRIAgent):
             return "initiate"
         elif agent_state == "initiate" and mode == "audio":
             return "audio_mode"
-        elif mode == "audio" and agent_state == "in_progress" and final_audio_validation_status == "FAILED":
+        if mode == "audio" and agent_state == "in_progress" and final_audio_validation_status == "FAILED":
             return "chat_mode"
         elif mode == "chat" and agent_state == "in_progress":
             return "chat_mode"
@@ -90,7 +87,7 @@ def route_to_chat_or_audio(state: FRIAgent):
     except Exception as e:
         logger.error(f"Error deciding mode: {e}")
         return "chat_mode"
-    
+   
 def reset_mode(state: FRIAgent) -> FRIAgent:
     """Reset the agent's mode to chat."""
     logger.info("Deciding on agent mode based on user mode.")
@@ -98,9 +95,7 @@ def reset_mode(state: FRIAgent) -> FRIAgent:
         mode = state.get("mode", "")
         field_to_be_processed = [field for field, status in state["fields_processed"].items() if status == "NOT_PROCESSED"]
         state["next_field_to_process"] = field_to_be_processed[0] if field_to_be_processed else None
-        final_audio_validation_status = state.get("final_audio_validation_status", "")
         agent_state = state.get("agent_state", "")
-    
         if mode == "audio" and agent_state == "in_progress":
             logger.info("Resetting mode to chat after audio processing.")
             state["mode"] = "chat"
@@ -280,11 +275,8 @@ def should_go_for_chat_node_after_audio(state: FRIAgent) -> str:
     else:
         state["final_audio_validation_status"] = "PASSED"
         return "No"
-    
-    
 
 friagent_builder = StateGraph(FRIAgent)
-
 friagent_builder.add_node("init_mode", init_mode)
 friagent_builder.add_node("get_inputs_for_mode", get_inputs_for_mode)
 friagent_builder.add_node("extract_info_from_transcription", extract_info_from_transcription)
@@ -326,10 +318,7 @@ checkpoint_saver = InMemorySaver()
 friagent = friagent_builder.compile(checkpointer=checkpoint_saver)
 
 if __name__ == "__main__":
-
     png_bytes = friagent.get_graph().draw_mermaid_png(draw_method=MermaidDrawMethod.API)
-
     with open("fria_agent_graph.png", "wb") as f:
         f.write(png_bytes)
-
     print("Saved fria_agent_graph.png")

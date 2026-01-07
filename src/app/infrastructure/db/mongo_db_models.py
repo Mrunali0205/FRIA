@@ -16,7 +16,7 @@ class VehicleInfoModel(BaseModel):
     vehicle_model: str
     vehicle_year: str
 
-class TowingDocumentModel(BaseModel):
+class ReadTowingDocument(BaseModel):
     """Model for towing document stored in MongoDB."""
     user_details: UserDetailsModel
     vehicle_info: VehicleInfoModel
@@ -30,6 +30,17 @@ class TowingDocumentModel(BaseModel):
     is_deleted: bool
     updated_time: int = int(datetime.timestamp(datetime.now()))
     creation_time: int = int(datetime.timestamp(datetime.now()))
+
+class InsertTowingDocument(BaseModel):
+    """Model for inserting a towing document into MongoDB."""
+    user_details: UserDetailsModel
+    vehicle_info: VehicleInfoModel
+    session_id: str
+    incident: str
+    operability: str
+    vehicle_condition: str
+    battery_condition: str
+    address: str
 
 
 
