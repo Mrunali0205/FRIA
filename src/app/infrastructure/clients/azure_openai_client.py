@@ -1,8 +1,9 @@
 import openai
 from openai import AsyncAzureOpenAI, AsyncOpenAI
-from src.app.utils.config import settings   # ← FIXED import
+from src.app.core.log_config import setup_logging
+from src.app.core.config import settings   # ← FIXED import
 
-
+logger = setup_logging("AzureOpenAIClient")
 class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
     def __init__(self):
         if settings.ENDPOINT:
@@ -26,7 +27,20 @@ class AzureOpenAIClient(AsyncAzureOpenAI, AsyncOpenAI):
 
             message = response.choices[0].message.content
             if not message or not message.strip():
+                logger.error("Empty response from LLM") 
                 raise ValueError("Empty response from LLM")
             return message
         except openai.OpenAIError as e:
-            return f"[ERROR] Chat completion failed: {e}"
+            logger.error(f"Chat completion failed: {e}")
+            return ""
+
+
+if __name__ == "__main__":
+    import asyncio
+    client = AzureOpenAIClient()
+    messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello, how are you?"}
+        ]
+
+    asyncio.run(client.get_chat_response(messages))

@@ -24,6 +24,16 @@ httpx
 
 # Geolocation
 geopy
+fpdf2
 
 # MCP (keep only if you're using your MCP server)
 fastmcp
+motor
+
+#database
+psycopg2-binary
+sqlalchemy
+pymongo[srv]
+
+# Workflows
+pylint

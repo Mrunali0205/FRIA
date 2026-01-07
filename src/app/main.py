@@ -1,111 +1,60 @@
 import uuid
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from src.app.core.config import settings
+from motor.motor_asyncio import AsyncIOMotorClient
+from src.app.core.log_config import setup_logging
+from src.app.apis.v1 import location_api, users_api, agent_api, audio_api, document_apis
 
-# LangGraph agent
-from src.app.agent.MruNav_agent import agent
-from langgraph.types import Command
+mongo_db_uri = settings.MONGODB_URI or ""
 
-# Schemas
-from app.apis.schemas.fria_agent_schema import (
-    FriaAgentInvokeSchema,
-    TowingGuideInvokeSchema
+logger = setup_logging(__name__)
+
+app = FastAPI(
+    title="FRIA Agent and Services API",
+    description="Server for First Responder Intelligent Agent and related services.",
+    version="1.0.0",
 )
-
-# Towing guide agent
-from app.agent.fria_agent import invoke_agent
-
-# GPS router
-from src.app.routers.location_routers import router as location_router
-
-# Audio
-from app.services.audio_transcription_service import transcribe_mic
-
-# Geocode model (only needed for the plain reverse-geocode endpoint)
-from pydantic import BaseModel
-class GeoRequest(BaseModel):
-    lat: float
-    lon: float
-
-
-# CREATE FASTAPI APP
-app = FastAPI()
-
-# CORS
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],       # Dev mode
+    allow_origins=[settings.FRONTEND_URL or "http://localhost:3000"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# REGISTER ROUTERS
-app.include_router(location_router)
+@app.get("/", tags=["Root"])
+def root():
+    """Root endpoint."""
+    return {"message": "FRIA Agent and Services API is running."}
 
-# START AGENT SESSION
+@app.get("/health/live", tags=["Health Check"])
+def health_check():
+    """Health check endpoint."""
+    return {"status": "alive"}
 
-@app.get("/agent/start")
-async def start_agent_session():
-    session_id = str(uuid.uuid4())
-    final_state = await agent.ainvoke(
-        {"user_name": "John Doe"},
-        config={"configurable": {"thread_id": session_id}}
-    )
-    last_message = final_state["messages"][-1].content
-    return {
-        "session_id": session_id,
-        "last_message": last_message
-    }
+@app.get("/health/startup", tags=["Startup"])
+def health_startup():
+    """Readiness check endpoint."""
+    return {"status": "started"}
 
+@app.on_event("startup")
+async def startup_db_client():
+    """Initialize MongoDB client on startup."""
+    logger.info("Connecting to MongoDB...")
+    app.state.mongodb_client = AsyncIOMotorClient(mongo_db_uri)
+    app.state.mongodb = app.state.mongodb_client.fria_document_db
+    logger.info("Connected to MongoDB.")
 
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    """Close MongoDB client on shutdown."""
+    logger.info("Closing MongoDB connection...")
+    app.state.mongodb_client.close()
+    logger.info("MongoDB connection closed.")
 
-@app.post("/agent/continue")
-async def agent_invoke(req: FriaAgentInvokeSchema):
-
-    final_state = await agent.ainvoke(
-        Command(
-            resume={
-                "user_message": req.user_message,
-            }
-        ),
-        config={"configurable": {"thread_id": req.session_id}}
-    )
-
-    last_message = final_state["messages"][-1].content
-    return {"last_message": last_message}
-
-# TOWING GUIDE ENDPOINT
-
-@app.post("/agent/invoke_towing_guide")
-def agent_towing_guide(req: TowingGuideInvokeSchema):
-    response = invoke_agent(towing_instruction=req.towing_instruction)
-    return {
-        "session_id": req.session_id,
-        "response": response
-    }
-
-
-# SIMPLE REVERSE-GEOCODE ENDPOINT
-# delete this if location_router handles everything)
-@app.post("/location/reverse-geocode")
-def reverse_geocode_location(req: GeoRequest):
-    from app.services.gps_location_service import reverse_geocode
-    address = reverse_geocode(req.lat, req.lon)
-    return {
-        "success": True,
-        "address": address,
-        "lat": req.lat,
-        "lon": req.lon
-    }
-
-# AUDIO TRANSCRIPTION
-@app.post("/agent/transcribe")
-def transcribe_audio():
-    text = transcribe_mic()
-    return {"transcript": text}
-
-
-
-
+app.include_router(location_api.router, prefix="/api/v1")
+app.include_router(users_api.router, prefix="/api/v1")
+app.include_router(agent_api.router, prefix="/api/v1")
+app.include_router(audio_api.router, prefix="/api/v1")
+app.include_router(document_apis.router, prefix="/api/v1")
