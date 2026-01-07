@@ -21,9 +21,10 @@ class TowingDocumentModel(BaseModel):
     user_details: UserDetailsModel
     vehicle_info: VehicleInfoModel
     session_id: str
-    incident_description: str
-    operable_status: str
+    incident: str
+    operability: str
     vehicle_condition: str
+    battery_condition: str
     address: str
     is_completed: bool
     is_deleted: bool

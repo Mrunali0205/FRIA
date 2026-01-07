@@ -110,8 +110,8 @@ class SQLClient:
             with self.session() as connection:
                 result = connection.execute(text(query), params or {})
                 if as_dict:
-                    print(result.fetchall())
-                    rows = [{row[0] : row[1]} for row in result.fetchall()]
+                    results = result.fetchall()
+                    rows = [{row[0] : row[1]} for row in results]
                     logger.info(f"[Fetch All] Retrieved {len(rows)} records.")
                     return rows
                 else:

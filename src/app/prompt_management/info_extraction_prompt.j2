@@ -16,6 +16,7 @@ mode: {{ mode }}  # "audio" or "chat"
     vehicle type:- {{ vehicle_type }}
 
     using the above transcription,  extract information for all fields metioned below.
+    Dont get confused with fields, just focus on feilds description as mentioned below and extract information accordingly.
     Extract and return the result strictly in valid JSON with the following fields:
 
       - incident: What happened? (brief description of the incident)
@@ -32,6 +33,76 @@ mode: {{ mode }}  # "audio" or "chat"
         "battery_condition": "..."
       }
       ```
+
+    Examples:
+    1. audio_transcription: I met with an accident. My car is safe but there there's been a problem with the battery. The actually I'm using a Tesla Model Y model but the car battery shows the battery is null null. So can you help me with the towing?
+        vehicle_type: electric
+        Reasoning:
+        - incident: "met with an accident" (user mentioned an accident)
+        - operability: null (user did not specify if the vehicle is operable)
+        - vehicle_condition: null (user mentioned the car is safe, no damage described)
+        - battery_condition: "battery is empty" (user mentioned the battery shows empty, consider null as empty here)
+        OUTPUT:
+        ```json
+        {
+          "incident": "met with an accident",
+          "operability": null,
+          "vehicle_condition": null,
+          "battery_condition": "battery is empty"
+        }
+        ```
+    
+    2. audio transcription: I started, I started driving on the I-94 and then suddenly the there has been some noise in the car and it stopped. So the vehicle is right now not operable. I can see some smoke coming from the engine, so I think the engine is damaged. No, the electric car is not electric.
+        vehicle_type: non-electric
+        Reasoning:
+        - incident: "noise in the car and it stopped" (user described what happened)
+        - operability: "no" (user mentioned the vehicle is not operable)
+        - vehicle_condition: "smoke coming from the engine, engine is damaged" (user described the condition)
+        - battery_condition: "not-electric" (vehicle is non-electric)
+        OUTPUT:
+        ```json
+        {
+          "incident": "noise in the car and it stopped",
+          "operability": "no",
+          "vehicle_condition": "smoke coming from the engine, engine is damaged",
+          "battery_condition": "not-electric"
+        }
+        ```
+
+    3. audio transcription: Oh, I was driving on I-94 then suddenly the car got stopped. Uh, there is smoke from the in engine.
+        vehicle_type: electric
+        Reasoning:
+        - incident: "car got stopped on I-94" (user described what happened)
+        - operability: null (user did not specify if the vehicle is operable)
+        - vehicle_condition: "smoke from the engine" (user described the condition)
+        - battery_condition: "null" (user didn't mentioned the battery status)
+        OUTPUT:
+        ```json
+        {
+          "incident": "car got stopped on I-94",
+          "operability": null,
+          "vehicle_condition": "smoke from the engine",
+          "battery_condition": "null"
+        }
+        ```
+
+    4. audio transcription: My car got stopped while I was driving on I-94.
+        vehicle_type: electric
+        Reasoning:
+        - incident: "car got stopped while driving on I-94" (user described what happened)
+        - operability: null (user did not specify if the vehicle is operable)
+        - vehicle_condition: null (no damage or condition described)
+        - battery_condition: null (vehicle is electric and user didn't mentioned battery status)
+        OUTPUT:
+        ```json
+        {
+          "incident": "car got stopped while driving on I-94",
+          "operability": null,
+          "vehicle_condition": null,
+          "battery_condition": null
+        }
+        ```
+
 {% elif mode == "chat" %}
     agent question:- {{ agent_question }}
     user response:- {{ user_response }}
@@ -53,6 +124,44 @@ mode: {{ mode }}  # "audio" or "chat"
         "{{ fields_to_extract }}": "..."
       }
       ```
+
+      Examples:
+      1. agent question: Can you please describe what happened to your vehicle?
+          user response: My car broke down on the highway.
+          field to extract: incident
+          OUTPUT:
+          ```json
+          {
+            "incident": "car broke down on the highway"
+          }
+          ```
+      2. agent question: Is your vehicle operable at the moment?
+          user response: Yes, it is still running.
+          field to extract: operability
+          OUTPUT:
+          ```json
+          {
+            "operability": "yes"
+          }
+          ```
+      3. agent question: Can you describe the condition of your vehicle?
+          user response: None
+          field to extract: vehicle_condition
+          OUTPUT:
+          ```json
+          {
+            "vehicle_condition": "MISSING"
+          }
+          ```
+      4. agent question: What is the condition of your vehicle's battery?
+          user response: I don't know anything about the battery.
+          field to extract: battery_condition
+          OUTPUT:
+          ```json
+          {
+            "battery_condition": "FAILED"
+          }
+          ```
 {% endif %}
 
 4. Rules:

@@ -1,15 +1,21 @@
 """Document APIs for handling MongoDB interactions."""
+import io
+import imghdr
+from PIL import Image
 from fastapi import APIRouter, Depends, HTTPException, status
+from pathlib import Path
+from fastapi.responses import StreamingResponse
 from src.app.services.document_services import (insert_towing_document, 
                                                 get_towing_document_by_id, 
                                                 update_towing_document)
 from src.app.core.database import get_mongo_db
+from src.app.services.generate_pdf import create_pdf_from_json
 from src.app.infrastructure.db.mongo_db_models import TowingDocumentModel
 from src.app.core.log_config import setup_logging
 
 logger = setup_logging(__name__)
 
-router = APIRouter(prefix="/documents", tags=["Document APIs"])
+router = APIRouter(prefix="/documents", tags=["Document Endpoints"])
 
 @router.post("/insert-towing-documents", status_code=status.HTTP_201_CREATED)
 async def create_towing_document(
@@ -53,3 +59,26 @@ async def modify_towing_document(
         raise HTTPException(status_code=500, detail="Failed to update towing document.")
     
     return {"status_code": 200, "message": "Towing document updated successfully."}
+
+
+@router.post("/download-towing-pdf", status_code=status.HTTP_200_OK)
+async def download_towing_pdf(towing_document: TowingDocumentModel):
+    """
+    Generate a PDF from the provided towing_document JSON and return it as a downloadable file.
+    """
+    try:
+        pdf_buffer = create_pdf_from_json(towing_document.dict())
+
+        if not pdf_buffer:
+            logger.error("PDF generation returned no data")
+            raise HTTPException(status_code=500, detail="Failed to generate PDF")
+
+        pdf_buffer.seek(0)
+        headers = {"Content-Disposition": 'attachment; filename="towing_report.pdf"'}
+        return StreamingResponse(pdf_buffer, media_type="application/pdf", headers=headers)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating/downloading PDF: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")

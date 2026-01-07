@@ -3,16 +3,16 @@ import os
 import json
 import asyncio
 from typing import TypedDict, Optional, List, Dict, Any
-
-from langgraph.types import interrupt
+from langchain_core.runnables.graph import MermaidDrawMethod
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
 from jinja2 import Environment, FileSystemLoader
 
+
 from src.app.core.log_config import setup_logging
+from src.app.services.document_services import insert_towing_document, update_towing_document
 from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
-from src.app.services.gps_location_service import reverse_geocode
 
 logger = setup_logging("FRIA AGENT")
 llm = AzureOpenAIClient()
@@ -75,23 +75,40 @@ def route_to_chat_or_audio(state: FRIAgent):
     logger.info("Deciding on agent mode based on user mode.")
     try:
         mode = state.get("mode", "")
-        field_to_be_processed = [field for field, status in state["fields_processed"].items() if status == "NOT_PROCESSED"]
-        state["next_field_to_process"] = field_to_be_processed[0] if field_to_be_processed else None
         final_audio_validation_status = state.get("final_audio_validation_status", "")
         agent_state = state.get("agent_state", "")
         if agent_state == "initiate" and mode == "chat":
             return "initiate"
         elif agent_state == "initiate" and mode == "audio":
-            return "inputs_audio"
+            return "audio_mode"
         elif mode == "audio" and agent_state == "in_progress" and final_audio_validation_status == "FAILED":
-            return "chat_node"
-        elif mode == "chat":
-            return "chat_node"
+            return "chat_mode"
+        elif mode == "chat" and agent_state == "in_progress":
+            return "chat_mode"
         else:
-            return "chat_node"
+            return "chat_mode"
     except Exception as e:
         logger.error(f"Error deciding mode: {e}")
-        return "chat_node"
+        return "chat_mode"
+    
+def reset_mode(state: FRIAgent) -> FRIAgent:
+    """Reset the agent's mode to chat."""
+    logger.info("Deciding on agent mode based on user mode.")
+    try:
+        mode = state.get("mode", "")
+        field_to_be_processed = [field for field, status in state["fields_processed"].items() if status == "NOT_PROCESSED"]
+        state["next_field_to_process"] = field_to_be_processed[0] if field_to_be_processed else None
+        final_audio_validation_status = state.get("final_audio_validation_status", "")
+        agent_state = state.get("agent_state", "")
+    
+        if mode == "audio" and agent_state == "in_progress":
+            logger.info("Resetting mode to chat after audio processing.")
+            state["mode"] = "chat"
+            return state
+        return state
+    except Exception as e:
+        logger.error(f"Error deciding mode: {e}")
+        return state
     
 def get_inputs_for_mode(state: FRIAgent) -> FRIAgent:
     """Get user inputs based on the selected mode."""
@@ -129,6 +146,7 @@ def extract_info_from_transcription(state: FRIAgent) -> FRIAgent:
                                 )
         response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
         info = json.loads(response)
+        print("Extracted information:", info)
         state["extracted_information"] = info
         logger.info(f"Key information from audio is extracted successfully")
         return state
@@ -161,7 +179,6 @@ def validate_extracted_info(state: FRIAgent) -> FRIAgent:
             return state
         elif mode == "audio":
             audio_transcription = state["transcription"]
-            print(audio_transcription)
             prompt = load_template("validation_agent_prompt.j2", {
                 "mode": "audio",
                 "transcription": audio_transcription,
@@ -241,24 +258,6 @@ def chat_node(state: FRIAgent) -> FRIAgent:
     except Exception as e:
         logger.error(f"Error asking user: {e}")
         return state
-    
-def routing_to_chat_or_audio(state: FRIAgent) -> str:
-    """Route to chat or audio based on mode."""
-    logger.info("Routing to chat or audio based on mode.")
-    mode = state.get("mode", "")
-    final_audio_validation_status = state.get("final_audio_validation_status", "")
-    if mode == "audio" and final_audio_validation_status == "FAILED":
-        logger.info("Routing to chat_node due to audio validation failure.")
-        return "chat_node"
-    if mode == "audio":
-        logger.info("Routing to get_inputs_for_mode for audio mode.")
-        return "get_inputs_for_mode"
-    elif mode == "chat":
-        logger.info("Routing to chat_node for chat mode.")
-        return "chat_node"
-    else:
-        logger.info("Routing to chat_node by default.")
-        return "chat_node"
 
 def human_interrupt(state: FRIAgent) -> FRIAgent:
     """Handle human interrupt."""
@@ -293,14 +292,15 @@ friagent_builder.add_node("validate_extracted_info", validate_extracted_info)
 friagent_builder.add_node("update_towing_form", update_towing_form)
 friagent_builder.add_node("chat_node", chat_node)
 friagent_builder.add_node("human_interrupt", human_interrupt)
+friagent_builder.add_node("reset_mode", reset_mode)
 
 friagent_builder.add_edge(START, "init_mode")
 friagent_builder.add_conditional_edges(
     "init_mode",
     route_to_chat_or_audio,
     {
-        "inputs_audio": "get_inputs_for_mode",
-        "chat_node": "human_interrupt",
+        "audio_mode": "get_inputs_for_mode",
+        "chat_mode": "human_interrupt",
         "initiate": "chat_node"
     }
 )
@@ -315,7 +315,8 @@ friagent_builder.add_conditional_edges(
         "No": END
     }
 )
-friagent_builder.add_edge("human_interrupt", "extract_info_from_transcription")
+friagent_builder.add_edge("human_interrupt", "reset_mode")
+friagent_builder.add_edge("reset_mode", "extract_info_from_transcription")
 friagent_builder.add_edge("extract_info_from_transcription", "validate_extracted_info")
 friagent_builder.add_edge("validate_extracted_info", "update_towing_form")
 friagent_builder.add_edge("update_towing_form", "chat_node")
@@ -323,3 +324,12 @@ friagent_builder.add_edge("chat_node", END)
 
 checkpoint_saver = InMemorySaver()
 friagent = friagent_builder.compile(checkpointer=checkpoint_saver)
+
+if __name__ == "__main__":
+
+    png_bytes = friagent.get_graph().draw_mermaid_png(draw_method=MermaidDrawMethod.API)
+
+    with open("fria_agent_graph.png", "wb") as f:
+        f.write(png_bytes)
+
+    print("Saved fria_agent_graph.png")

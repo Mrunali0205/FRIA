@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from src.app.core.log_config import setup_logging
 from src.app.core.database import engine
-from src.app.utils.db import SessionLocal
+from src.app.core.database import SessionLocal
 from src.app.infrastructure.db.models import Base
 
 from src.app.infrastructure.db.models import UserProfile, VehicleInfo, InsurancePolicyDetails
