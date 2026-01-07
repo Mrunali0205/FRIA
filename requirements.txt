@@ -11,6 +11,10 @@ pydantic-settings
 openai
 azure-cognitiveservices-speech
 
+# LangGraph
+langgraph
+langchain-core
+
 # Templates
 Jinja2
 

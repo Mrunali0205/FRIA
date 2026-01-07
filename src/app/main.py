@@ -1,7 +1,5 @@
-"""
-Main file to run FastAPI app for FRIA agent and services.
-"""
-from fastapi import FastAPI
+import uuid
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from src.app.core.config import settings
 from motor.motor_asyncio import AsyncIOMotorClient
