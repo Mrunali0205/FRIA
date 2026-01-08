@@ -1,3 +1,4 @@
+"""Agent API Endpoints for FRIA Agent Initialization and Interaction."""
 from fastapi import APIRouter, HTTPException
 from src.app.services.agent_service import (initialize_agent, agent_continue)
 from src.app.apis.deps import DBClientDep
@@ -14,15 +15,9 @@ def api_initialize_agent(agent_initialize_data: AgentInitializeSchema, db_client
     """
     Endpoint to initialize the FRIA agent for a specific user.
     """
-    response = initialize_agent(db_client, 
-                              user_id = agent_initialize_data.user_id,
-                              session_id = agent_initialize_data.session_id,
-                              mode = agent_initialize_data.mode,
-                              recorded_transcription = agent_initialize_data.recorded_transcription,
-                              vehicle_type = agent_initialize_data.vehicle_type
-                             )
+    response = initialize_agent(db_client, agent_initialize_data=agent_initialize_data)
     if response["status"] == "error":
-        logger.error(f"Failed to initialize agent: {response['message']}")
+        logger.error("Failed to initialize agent: %s", response["message"])
         raise HTTPException(status_code=500, detail=response["message"])
     return {"status_code": 200, "data": response}
 
@@ -31,13 +26,8 @@ def api_continue_agent_interaction(agent_continue_data: AgentContinueSchema, db_
     """
     Endpoint to continue the FRIA agent interaction.
     """
-    response = agent_continue(db_client, 
-                              user_id = agent_continue_data.user_id,
-                              session_id = agent_continue_data.session_id,
-                              vehicle_type = agent_continue_data.vehicle_type,
-                              user_response = agent_continue_data.user_response
-                             )
+    response = agent_continue(db_client, agent_continue_data=agent_continue_data)
     if response["status"] == "error":
-        logger.error(f"Failed to continue agent interaction: {response['message']}")
+        logger.error("Failed to continue agent interaction: %s", response["message"])
         raise HTTPException(status_code=500, detail=response["message"])
     return {"status_code": 200, "data": response}

@@ -1,6 +1,6 @@
 """MongoDB models towing documents."""
-from pydantic import BaseModel
 from datetime import datetime
+from pydantic import BaseModel
 
 class UserDetailsModel(BaseModel):
     """Model for user details in towing document."""
@@ -41,8 +41,3 @@ class InsertTowingDocument(BaseModel):
     vehicle_condition: str
     battery_condition: str
     address: str
-
-
-
-
-    

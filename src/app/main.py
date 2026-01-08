@@ -1,8 +1,8 @@
-import uuid
-from fastapi import FastAPI, File, UploadFile
+"""Main application file for the FRIA Agent and Services API."""
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.app.core.config import settings
 from motor.motor_asyncio import AsyncIOMotorClient
+from src.app.core.config import settings
 from src.app.core.log_config import setup_logging
 from src.app.apis.v1 import location_api, users_api, agent_api, audio_api, document_apis
 
@@ -17,7 +17,7 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL or "http://localhost:3000"], 
+    allow_origins=[settings.FRONTEND_URL or "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

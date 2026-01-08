@@ -76,4 +76,3 @@ def create_session_id(db_client: DBClientDep, user_id: str, vehicle_id: str, use
     )
 
     return session_id
-

@@ -1,11 +1,12 @@
 """GPS location services."""
-import requests
 import uuid
 import datetime
 from typing import Optional, List, Dict
+import requests
 from geopy.geocoders import Nominatim
 from src.app.apis.deps import DBClientDep
 from src.app.core.log_config import setup_logging
+from src.app.apis.schemas.location_routers_schema import InsertGPSLocationRequest
 
 logger = setup_logging("GPS LOCATION SERVICE")
 
@@ -65,29 +66,26 @@ def auto_detect_location() -> dict:
         return {}
 
 def insert_gps_location(
-    user_id: str,
-    session_id: str,
-    address: str,
-    latitude: float,
-    longitude: float,
+    gps_location_request: InsertGPSLocationRequest,
     db_client: DBClientDep
 ):
     """Insert GPS location into the database."""
-    
     status = db_client.insert(
-        query="INSERT INTO gps_locations (id, user_id, session_id, address, latitude, longitude, created_at) VALUES (:id, :user_id, :session_id, :address, :latitude, :longitude, :created_at)",
+        query="""INSERT INTO gps_locations (id, user_id, session_id, address, latitude, longitude, created_at)
+        VALUES (:id, :user_id, :session_id, :address, :latitude, :longitude, :created_at)""",
         values={
             "id": str(uuid.uuid4()),
-            "user_id": user_id,
-            "session_id": session_id,
-            "address": address,
-            "latitude": latitude,
-            "longitude": longitude,
+            "user_id": gps_location_request.user_id,
+            "session_id": gps_location_request.session_id,
+            "address": gps_location_request.address,
+            "latitude": gps_location_request.latitude,
+            "longitude": gps_location_request.longitude,
             "created_at": datetime.datetime.now(datetime.timezone.utc)
         }
     )
-    logger.info(f"Inserted GPS location for user_id={user_id}, session_id={session_id}, address={address}")
+    logger.info("Inserted GPS location for user_id=%s, session_id=%s, address=%s",
+                gps_location_request.user_id, gps_location_request.session_id, gps_location_request.address)
     if status.get("status") != "success":
-        logger.error(f"Failed to insert GPS location for user_id={user_id}, session_id={session_id}")
+        logger.error("Failed to insert GPS location for user_id=%s, session_id=%s", gps_location_request.user_id, gps_location_request.session_id)
         return {"insert_success": False, "message": "Failed to insert GPS location."}
     return {"insert_success": True, "message": "GPS location inserted successfully."}

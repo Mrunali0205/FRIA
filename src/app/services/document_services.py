@@ -18,12 +18,12 @@ async def insert_towing_document(
         doc_dict["creation_time"] = int(datetime.datetime.timestamp(datetime.datetime.now()))
         doc_dict["updated_time"] = int(datetime.datetime.timestamp(datetime.datetime.now()))
         result = await mongodb.towing_documents.insert_one(dict(doc_dict))
-        logger.info(f"Towing document inserted with ID: {result.inserted_id}")
+        logger.info("Towing document inserted with ID: %s", result.inserted_id)
         return str(result.inserted_id)
     except Exception as e:
-        logger.error(f"Error inserting towing document: {e}")
+        logger.error("Error inserting towing document: %s", e)
         return None
-    
+
 async def get_towing_document_by_id(
     document_id: str,
     mongodb
@@ -33,15 +33,14 @@ async def get_towing_document_by_id(
         id = ObjectId(document_id)
         document = await mongodb.towing_documents.find_one({"_id": id})
         if document:
-            logger.info(f"Towing document retrieved with ID: {document_id}")
+            logger.info("Towing document retrieved with ID: %s", document_id)
             return ReadTowingDocument(**document)
-        else:
-            logger.warning(f"Towing document with ID {document_id} not found.")
-            return None
-    except Exception as e:
-        logger.error(f"Error retrieving towing document: {e}")
+        logger.warning("Towing document with ID %s not found.", document_id)
         return None
-    
+    except Exception as e:
+        logger.error("Error retrieving towing document: %s", e)
+        return None
+
 async def update_towing_document(
     document_id: str,
     update_data: dict,
@@ -51,18 +50,17 @@ async def update_towing_document(
     try:
         id = ObjectId(document_id)
         if await get_towing_document_by_id(document_id, mongodb) is None:
-            logger.warning(f"Towing document with ID {document_id} not found for update.")
+            logger.warning("Towing document with ID %s not found for update.", document_id)
             return False
         result = await mongodb.towing_documents.update_one(
             {"_id": id},
             {"$set": update_data}
         )
         if result.modified_count:
-            logger.info(f"Towing document with ID {document_id} updated successfully.")
+            logger.info("Towing document with ID %s updated successfully.", document_id)
             return True
-        else:
-            logger.warning(f"No updates made to towing document with ID {document_id}.")
-            return False
+        logger.warning("No updates made to towing document with ID %s.", document_id)
+        return False
     except Exception as e:
-        logger.error(f"Error updating towing document: {e}")
+        logger.error("Error updating towing document: %s", e)
         return False

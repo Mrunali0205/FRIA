@@ -5,13 +5,13 @@ init-hook='import sys; sys.path.append(".")'
 [MESSAGES CONTROL]
 disable=
     too-few-public-methods,
-    invalid-name
+    invalid-name,
+    broad-exception-caught,
+    raise-missing-from,
+    too-many-statements
 
 [FORMAT]
 max-line-length=160
 
 [REPORTS]
 output-format=colorized
-
-[TYPECHECK]
-ignored-modules = alembic, alembic.op, alembic.context

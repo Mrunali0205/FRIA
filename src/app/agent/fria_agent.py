@@ -6,7 +6,7 @@ from typing import TypedDict, Optional, List, Dict, Any
 from langchain_core.runnables.graph import MermaidDrawMethod
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain_core.messages import AIMessage, HumanMessage, BaseMessage
+from langchain_core.messages import (AIMessage, HumanMessage, BaseMessage)
 from jinja2 import Environment, FileSystemLoader
 from src.app.core.log_config import setup_logging
 from src.app.infrastructure.clients.azure_openai_client import AzureOpenAIClient
@@ -67,7 +67,7 @@ def init_mode(state: FRIAgent) -> FRIAgent:
             state["messages"].append(AIMessage(content="Agent initiated."))
     return state
 
-def route_to_chat_or_audio(state: FRIAgent):
+def route_to_chat_or_audio(state: FRIAgent) -> str:
     """route to chat or audio based on mode."""
     logger.info("Deciding on agent mode based on user mode.")
     try:
@@ -76,18 +76,15 @@ def route_to_chat_or_audio(state: FRIAgent):
         agent_state = state.get("agent_state", "")
         if agent_state == "initiate" and mode == "chat":
             return "initiate"
-        elif agent_state == "initiate" and mode == "audio":
+        if agent_state == "initiate" and mode == "audio":
             return "audio_mode"
         if mode == "audio" and agent_state == "in_progress" and final_audio_validation_status == "FAILED":
             return "chat_mode"
-        elif mode == "chat" and agent_state == "in_progress":
-            return "chat_mode"
-        else:
-            return "chat_mode"
-    except Exception as e:
-        logger.error(f"Error deciding mode: {e}")
         return "chat_mode"
-   
+    except Exception as e:
+        logger.error("Error deciding mode: %e", e)
+        return "chat_mode"
+
 def reset_mode(state: FRIAgent) -> FRIAgent:
     """Reset the agent's mode to chat."""
     logger.info("Deciding on agent mode based on user mode.")
@@ -102,9 +99,9 @@ def reset_mode(state: FRIAgent) -> FRIAgent:
             return state
         return state
     except Exception as e:
-        logger.error(f"Error deciding mode: {e}")
+        logger.error("Error deciding mode: %e", e)
         return state
-    
+
 def get_inputs_for_mode(state: FRIAgent) -> FRIAgent:
     """Get user inputs based on the selected mode."""
     logger.info("Getting user inputs based on selected mode.")
@@ -121,7 +118,7 @@ def get_inputs_for_mode(state: FRIAgent) -> FRIAgent:
             state["messages"] = []
         return state
     return state
-    
+
 def extract_info_from_transcription(state: FRIAgent) -> FRIAgent:
     """Extract structured information from audio transcription."""
     logger.info("Extracting information from transcription.")
@@ -131,25 +128,24 @@ def extract_info_from_transcription(state: FRIAgent) -> FRIAgent:
         vehicle_type = state.get("vehicle_type", "")
         agent_query = state.get("agent_query", "")
         user_response = state.get("user_response", "")
-        prompt = load_template("info_extraction_prompt.j2", 
-                               {"transcription": transcription,
-                                "vehicle_type": vehicle_type,
-                                "mode": mode,
-                                "agent_question": agent_query,
-                                "user_response": user_response,
-                                "fields_to_extract": state.get("next_field_to_process", "")}
-                                )
+        prompt = load_template("info_extraction_prompt.j2",
+            {"transcription": transcription,
+            "vehicle_type": vehicle_type,
+            "mode": mode,
+            "agent_question": agent_query,
+            "user_response": user_response,
+            "fields_to_extract": state.get("next_field_to_process", "")}
+        )
         response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
         info = json.loads(response)
-        print("Extracted information:", info)
         state["extracted_information"] = info
-        logger.info(f"Key information from audio is extracted successfully")
+        logger.info("Key information from audio is extracted successfully")
         return state
     except Exception as e:
-        logger.error(f"Error extracting information: {e}")
+        logger.error("Error extracting information: %e", e)
         state["extracted_information"] = {}
         return state
-    
+
 def validate_extracted_info(state: FRIAgent) -> FRIAgent:
     """Validate the extracted information."""
     logger.info("Validating extracted information.")
@@ -172,14 +168,14 @@ def validate_extracted_info(state: FRIAgent) -> FRIAgent:
             state["validation_status"] = validation_result
             logger.info("Extracted information validated successfully in chat mode after audio failure.")
             return state
-        elif mode == "audio":
+        if mode == "audio":
             audio_transcription = state["transcription"]
             prompt = load_template("validation_agent_prompt.j2", {
                 "mode": "audio",
                 "transcription": audio_transcription,
                 "extracted_data": extracted_info
             })
-        elif mode == "chat":
+        if mode == "chat":
             prompt = load_template("validation_agent_prompt.j2", {
                 "mode": "chat",
                 "user_response": user_response,
@@ -193,10 +189,10 @@ def validate_extracted_info(state: FRIAgent) -> FRIAgent:
         logger.info("Extracted information validated successfully.")
         return state
     except Exception as e:
-        logger.error(f"Error validating information: {e}")
+        logger.error("Error validating information: %e", e)
         state["validation_status"] = {"status": "incomplete"}
         return state
-    
+
 def update_towing_form(state: FRIAgent) -> FRIAgent:
     """Update the towing form based on validated information."""
     logger.info("Updating towing form based on validated information.")
@@ -227,9 +223,9 @@ def update_towing_form(state: FRIAgent) -> FRIAgent:
         logger.info("Towing form updated successfully.")
         return state
     except Exception as e:
-        logger.error(f"Error updating towing form: {e}")
+        logger.error("Error updating towing form: %e", e)
         return state
-    
+
 def chat_node(state: FRIAgent) -> FRIAgent:
     """Ask user about information about incident."""
     logger.info("Asking user for missing or unclear information.")
@@ -251,7 +247,7 @@ def chat_node(state: FRIAgent) -> FRIAgent:
         logger.info("User asked for missing information successfully.")
         return state
     except Exception as e:
-        logger.error(f"Error asking user: {e}")
+        logger.error("Error asking user: %e", e)
         return state
 
 def human_interrupt(state: FRIAgent) -> FRIAgent:
@@ -272,9 +268,8 @@ def should_go_for_chat_node_after_audio(state: FRIAgent) -> str:
     if "FAILED" in validation_status.values() or "MISSING" in validation_status.values():
         state["final_audio_validation_status"] = "FAILED"
         return "Yes"
-    else:
-        state["final_audio_validation_status"] = "PASSED"
-        return "No"
+    state["final_audio_validation_status"] = "PASSED"
+    return "No"
 
 friagent_builder = StateGraph(FRIAgent)
 friagent_builder.add_node("init_mode", init_mode)

@@ -1,9 +1,9 @@
 """SQL Client for executing raw SQL queries using SQLAlchemy engine."""
-from src.app.core.log_config import setup_logging
 from contextlib import contextmanager
-from src.app.core.database import engine
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from src.app.core.log_config import setup_logging
+from src.app.core.database import engine
 
 logger = setup_logging("SQL Client")
 
@@ -11,7 +11,6 @@ class SQLClient:
     """
     SQL Client for executing raw SQL queries using SQLAlchemy engine.
     """
-
     def __init__(self):
         self.engine = engine
 
@@ -25,7 +24,7 @@ class SQLClient:
             try:
                 yield connection
             except SQLAlchemyError as e:
-                logger.error(f"[Session] An error occurred during session: {e}")
+                logger.error("[Session] An error occurred during session: %s", e)
                 raise
             finally:
                 logger.info("[Session] Closing database connection.")
@@ -42,7 +41,7 @@ class SQLClient:
                 result = connection.execute(text(query))
                 return result
             except SQLAlchemyError as e:
-                logger.error(f"[Execute without params] Error executing query: {e}")
+                logger.error("[Execute without params] Error executing query: %s", e)
                 raise
 
     def execute_with_params(self, query: str, params: dict = None):
@@ -58,7 +57,7 @@ class SQLClient:
                 result = connection.execute(text(query), params or {})
                 return result
             except SQLAlchemyError as e:
-                logger.error(f"[Execute with params] Error executing query: {e}")
+                logger.error("[Execute with params] Error executing query: %s", e)
                 raise
 
     def insert(self, query: str, values: dict | list[dict] = None):
@@ -72,15 +71,14 @@ class SQLClient:
             with self.session() as connection:
                 if isinstance(values, list) and isinstance(values[0], dict):
                     connection.execute(text(query), values)
-                    logger.info(f"[Insert] (Batch) Inserted multiple records.")
+                    logger.info("[Insert] (Batch) Inserted multiple records.")
                     return {"status": "success"}
-                else:
-                    connection.execute(text(query), values or {})
-                    logger.info(f"[Insert] Inserted single record.")
-                    return {"status": "success"}
+                connection.execute(text(query), values or {})
+                logger.info("[Insert] Inserted single record.")
+                return {"status": "success"}
 
         except SQLAlchemyError as e:
-            logger.error(f"[Insert] Error executing insert: {e}")
+            logger.error("[Insert] Error executing insert: %s", e)
             raise
 
     def insert_returning_id(self, query: str, values: dict = None) -> int:
@@ -95,10 +93,10 @@ class SQLClient:
             with self.session() as connection:
                 result = connection.execute(text(query), values or {})
                 inserted_id = result.scalar_one_or_none()
-                logger.info(f"[Insert Returning ID] Inserted record with ID: {inserted_id}")
+                logger.info("[Insert Returning ID] Inserted record with ID: %s", inserted_id)
                 return inserted_id
         except SQLAlchemyError as e:
-            logger.error(f"[Insert Returning ID] Error executing insert: {e}")
+            logger.error("[Insert Returning ID] Error executing insert: %s", e)
             raise
 
     def fetch_all(self, query: str, params: dict = None, as_dict: bool = True):
@@ -115,14 +113,13 @@ class SQLClient:
                 if as_dict:
                     results = result.fetchall()
                     rows = [{row[0] : row[1]} for row in results]
-                    logger.info(f"[Fetch All] Retrieved {len(rows)} records.")
+                    logger.info("[Fetch All] Retrieved %d records.", len(rows))
                     return rows
-                else:
-                    rows = result.fetchall()
-                    logger.info(f"[Fetch All] Retrieved {len(rows)} records.")
-                    return rows
+                rows = result.fetchall()
+                logger.info("[Fetch All] Retrieved %d records.", len(rows))
+                return rows
         except SQLAlchemyError as e:
-            logger.error(f"[Fetch All] Error executing fetch: {e}")
+            logger.error("[Fetch All] Error executing fetch: %s", e)
             raise
 
     def fetch_one(self, query: str, params: dict = None, as_dict: bool = True) -> dict | None:
@@ -138,15 +135,12 @@ class SQLClient:
                 result = connection.execute(text(query), params or {})
                 row = result.mappings().first() if as_dict else result.first()
                 if row:
-                    if as_dict:
-                        record = dict(row)
-                    else:
+                    if not as_dict:
                         record = row
-                    logger.info(f"[Fetch One] Retrieved record")
+                    record = dict(row)
                     return record
-                else:
-                    logger.info("[Fetch One] No record found.")
-                    return None
+                logger.info("[Fetch One] No record found.")
+                return None
         except SQLAlchemyError as e:
-            logger.error(f"[Fetch One] Error executing fetch: {e}")
+            logger.error("[Fetch One] Error executing fetch: %s", e)
             raise

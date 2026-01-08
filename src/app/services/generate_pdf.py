@@ -25,7 +25,6 @@ def create_pdf_from_json(towing_document):
 
     project_root = Path(__file__).resolve().parents[3]
     image_path = project_root / "src/app/services/CCCIS_Logo.png"
-    
     pdf.image(str(image_path), x=5, y=5, w=12, h=12)
 
     pdf.set_font("Arial", 'B', 19)
@@ -91,7 +90,7 @@ def create_pdf_from_json(towing_document):
     insert_line(pdf)
     pdf.set_font("Arial", 'BU', 12)
     pdf.set_xy(4, 90)
-    pdf.cell(0, 0, "Issues", align='L', ln=1) 
+    pdf.cell(0, 0, "Issues", align='L', ln=1)
 
     set_heading_format(pdf)
     pdf.set_xy(4, 95)
@@ -123,7 +122,7 @@ def create_pdf_from_json(towing_document):
 
     set_heading_format(pdf)
     pdf.set_xy(4, 135)
-    pdf.cell(0, 10, "Address: ", align='L', ln=1) 
+    pdf.cell(0, 10, "Address: ", align='L', ln=1)
     set_sub_heading_format(pdf)
     pdf.set_xy(45, 135)
     pdf.cell(0, 10, towing_document["address"], align='L', ln=1)

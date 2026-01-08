@@ -1,3 +1,4 @@
+"""Check for existing tables in the database and seed initial data if necessary."""
 from typing import Set
 from sqlalchemy import inspect
 from sqlalchemy.orm import Session
@@ -79,12 +80,10 @@ def check_for_tables_or_seed_create():
     if not missing:
         logger.info("All tables exist. Nothing to create.")
         return []
-    
     logger.info("Missing tables detected: %s. Creating...", missing)
-    
     Base.metadata.create_all(bind=engine, tables=[Base.metadata.tables[t] for t in missing])
     logger.info("Created tables: %s", missing)
-    return missing 
+    return missing
 
 def seed_data_to_tables(db: Session = SessionLocal()):
     """
@@ -99,12 +98,10 @@ def seed_data_to_tables(db: Session = SessionLocal()):
             for user_data in user_seed_data:
                 user = UserProfile(**user_data)
                 db.add(user)
-                db.flush()  
+                db.flush()
                 user_id = user.id
             db.commit()
-
             logger.info("Seeded user_profiles table.")
-
         vehicle_count = db.query(VehicleInfo).count()
         if vehicle_count == 0:
             for vehicle_data in vehicle_seed_data:
@@ -112,11 +109,10 @@ def seed_data_to_tables(db: Session = SessionLocal()):
                 if user_id:
                     vehicle.user_id = user_id
                 db.add(vehicle)
-                db.flush()  
+                db.flush()
                 vehicle_id = vehicle.id
             db.commit()
             logger.info("Seeded vehicle_info table.")
-
         insurance_count = db.query(InsurancePolicyDetails).count()
         if insurance_count == 0:
             for insurance_data in insurance_policy_seed_data:
@@ -133,8 +129,6 @@ def seed_data_to_tables(db: Session = SessionLocal()):
         logger.error("Error seeding data: %s", e)
     finally:
         db.close()
-
-
 if __name__ == "__main__":
     logger.info("Adding the tables to database")
     check_for_tables_or_seed_create()

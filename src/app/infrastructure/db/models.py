@@ -20,7 +20,6 @@ class Base(DeclarativeBase):
     """
     Declarative base class for SQLAlchemy models.
     """
-    pass
 
 class UserProfile(Base):
     """Model for user profiles."""
