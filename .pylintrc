@@ -9,7 +9,8 @@ disable=
     broad-exception-caught,
     raise-missing-from,
     too-many-statements,
-    redefined-builtin
+    redefined-builtin,
+    ungrouped-imports
 
 [FORMAT]
 max-line-length=160
