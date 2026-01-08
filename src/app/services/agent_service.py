@@ -41,7 +41,8 @@ def initialize_agent(db: DBClientDep,
 
         return {
             "status": "success",
-            "agent_state": agent_state,
+            "agent_query": agent_state["agent_query"],
+            "towing_form" : agent_state["towing_form"],
             "message": "Agent initialized successfully.",
             "session_id": agent_initialize_data.session_id,
         }
@@ -92,7 +93,8 @@ def agent_continue(db: DBClientDep,
 
         return {
             "status": "success",
-            "agent_state": agent_state,
+            "agent_query": agent_state["agent_query"],
+            "towing_form": agent_state["towing_form"],
             "message": "Agent continued successfully.",
             "session_id": agent_continue_data.session_id,
         }
