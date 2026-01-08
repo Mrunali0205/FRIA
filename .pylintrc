@@ -8,7 +8,8 @@ disable=
     invalid-name,
     broad-exception-caught,
     raise-missing-from,
-    too-many-statements
+    too-many-statements,
+    redefined-builtin
 
 [FORMAT]
 max-line-length=160

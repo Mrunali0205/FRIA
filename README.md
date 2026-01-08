@@ -89,3 +89,9 @@ Quick start (Linux / macOS/ windows)
     `http://127.0.0.1:8000/docs`
 
 
+10. Important, since we are using pylint workflow to check the code quality for every push, before pushing the code, run this command to check for any PEP violations. if there are any warnings fix them, for any excpetions you want to avoid, disable those by adding the main warning in the disable section under [MESSAGE CONTROL].
+
+    ```bash
+    pylint $(git ls-files '*.py')
+    ```
+
