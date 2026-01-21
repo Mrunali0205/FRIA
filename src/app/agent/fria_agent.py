@@ -312,54 +312,53 @@ friagent_builder.add_edge("chat_node", END)
 checkpoint_saver = InMemorySaver()
 friagent = friagent_builder.compile(checkpointer=checkpoint_saver)
 
-# if __name__ == "__main__":
-#     png_bytes = friagent.get_graph().draw_mermaid_png(draw_method=MermaidDrawMethod.API)
-#     with open("fria_agent_graph.png", "wb") as f:
-#         f.write(png_bytes)
-#     print("Saved fria_agent_graph.png")
+if __name__ == "__main__":
+    png_bytes = friagent.get_graph().draw_mermaid_png(draw_method=MermaidDrawMethod.API)
+    with open("fria_agent_graph.png", "wb") as f:
+        f.write(png_bytes)
+    print("Saved fria_agent_graph.png")
 
-#     #test run code from prompt
-#     print("Test run - prompt")
-#     state={
-#         "mode":"chat",
-#         "agent_state":"initiate",
-#         "user_response":None,
-#         "messages":[]
-#     }
-#     out = friagent.invoke(state, config={"configurable": {"thread_id": "test-thread-1"}})
-#     print("Agent questions:\n", out.get("agent_query"))
-#     print("\nTowing form:\n", out.get("towing_form"))
-#     print("\nFields processed:\n", out.get("fields_processed"))
-#     print("\n--- TURN 2: USER ANSWERS ---\n")
+    #test run code from prompt
+    print("Test run - prompt")
+    state={
+        "mode":"chat",
+        "agent_state":"initiate",
+        "user_response":None,
+        "messages":[]
+    }
+    out = friagent.invoke(state, config={"configurable": {"thread_id": "test-thread-1"}})
+    print("Agent questions:\n", out.get("agent_query"))
+    print("\nTowing form:\n", out.get("towing_form"))
+    print("\nFields processed:\n", out.get("fields_processed"))
+    print("\n--- TURN 2: USER ANSWERS ---\n")
 
-#     state2 = out  
-#     state2["agent_state"] = "in_progress"
-#     state2["mode"] = "chat"
-#     state2["user_response"] = "My car broke down on I-90 and won’t start."
-#     out2 = friagent.invoke(
-#         state2,
-#         config={"configurable": {"thread_id": "test-thread-1"}}
-#     )
-#     print("Agent question:\n", out2.get("agent_query"))
-#     print("\nExtracted info:\n", out2.get("extracted_information"))
-#     print("\nValidation status:\n", out2.get("validation_status"))
-#     print("\nTowing form:\n", out2.get("towing_form"))
-#     print("\nFields processed:\n", out2.get("fields_processed"))
+    state2 = out  
+    state2["agent_state"] = "in_progress"
+    state2["mode"] = "chat"
+    state2["user_response"] = "My car broke down on I-90 and won’t start."
+    out2 = friagent.invoke(
+        state2,
+        config={"configurable": {"thread_id": "test-thread-1"}}
+    )
+    print("Agent question:\n", out2.get("agent_query"))
+    print("\nExtracted info:\n", out2.get("extracted_information"))
+    print("\nValidation status:\n", out2.get("validation_status"))
+    print("\nTowing form:\n", out2.get("towing_form"))
+    print("\nFields processed:\n", out2.get("fields_processed"))
 
 
-#     print("\n--- TURN 3: USER ANSWERS ---\n")
-#     state3 = out2
-#     state3["agent_state"] = "in_progress"
-#     state3["mode"] = "chat"
-#     state3["user_response"] = "No, it can’t move."
-#     out3 = friagent.invoke(
-#         state3,
-#         config={"configurable": {"thread_id": "test-thread-1"}}
-#     )
-#     print("Agent question:\n", out3.get("agent_query"))
-#     print("\nExtracted info:\n", out3.get("extracted_information"))
-#     print("\nValidation status:\n", out3.get("validation_status"))
-#     print("\nTowing form:\n", out3.get("towing_form"))
-#     print("\nFields processed:\n", out3.get("fields_processed"))
-
+    print("\n--- TURN 3: USER ANSWERS ---\n")
+    state3 = out2
+    state3["agent_state"] = "in_progress"
+    state3["mode"] = "chat"
+    state3["user_response"] = "No, it can’t move."
+    out3 = friagent.invoke(
+        state3,
+        config={"configurable": {"thread_id": "test-thread-1"}}
+    )
+    print("Agent question:\n", out3.get("agent_query"))
+    print("\nExtracted info:\n", out3.get("extracted_information"))
+    print("\nValidation status:\n", out3.get("validation_status"))
+    print("\nTowing form:\n", out3.get("towing_form"))
+    print("\nFields processed:\n", out3.get("fields_processed"))
 
