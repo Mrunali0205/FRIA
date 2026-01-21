@@ -43,6 +43,7 @@ class UserProfile(Base):
     messages = relationship("Message", back_populates="user")
     tow_requests = relationship("TowRequest", back_populates="user")
     audio_transcripts = relationship("AudioTranscript", back_populates="user")
+    geo_locations = relationship("geo_location", back_populates="user")
 
 class VehicleInfo(Base):
     """Model for vehicle information."""
@@ -109,6 +110,7 @@ class Session(Base):
     user = relationship("UserProfile", back_populates="sessions")
     vehicle = relationship("VehicleInfo", back_populates="sessions")
     audio_transcripts = relationship("AudioTranscript", back_populates="session")
+    geo_locations = relationship("geo_location", back_populates="session")
     #tow_request = relationship("TowRequest", back_populates="session", uselist=False)
 
 class Message(Base):
