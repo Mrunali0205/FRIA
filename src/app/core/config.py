@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-
+    """Application settings loaded from environment variables."""
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -36,4 +36,3 @@ class Settings(BaseSettings):
     mcp_port: Optional[int] = None
 
 settings = Settings()
-

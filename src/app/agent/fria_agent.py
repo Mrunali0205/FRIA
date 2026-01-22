@@ -3,7 +3,7 @@ import os
 import json
 import asyncio
 from typing import TypedDict, Optional, List, Dict, Any
-from langchain_core.runnables.graph import MermaidDrawMethod
+#from langchain_core.runnables.graph import MermaidDrawMethod
 from langgraph.graph import StateGraph, END, START
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import (AIMessage, HumanMessage, BaseMessage)
@@ -25,6 +25,7 @@ class FRIAgent(TypedDict):
     transcription: Optional[str]
     extracted_information: Dict[str, Any]
     agent_query: Optional[str]
+    human_sentiment: Optional[str]
     fields_processed: Optional[Dict[str, Any]]
     towing_form: Optional[Dict[str, Any]]
     vehicle_type: Optional[str]
@@ -84,6 +85,27 @@ def route_to_chat_or_audio(state: FRIAgent) -> str:
     except Exception as e:
         logger.error("Error deciding mode: %e", e)
         return "chat_mode"
+
+def detect_human_sentiment(state: FRIAgent) -> FRIAgent:
+    """Detect human sentiment from audio transcription."""
+    logger.info("Detecting human sentiment from user response.")
+    try:
+        transcription = state.get("transcription", "")
+        vehicle_type = state.get("vehicle_type", "")
+        prompt = load_template("analyse_user_sentiment.j2", {
+            "transcription_text": transcription,
+            "vehicle_type": vehicle_type
+        })
+        response = asyncio.run(llm.get_chat_response([{"role": "user", "content": prompt}]))
+        sentiment = response.strip()
+        print("Detected sentiment:", sentiment)
+        state["human_sentiment"] = sentiment
+        logger.info("Human sentiment detected successfully: %s", sentiment)
+        return state
+    except Exception as e:
+        logger.error("Error detecting human sentiment: %e", e)
+        state["human_sentiment"] = "neutral"
+        return state
 
 def reset_mode(state: FRIAgent) -> FRIAgent:
     """Reset the agent's mode to chat."""
@@ -272,6 +294,20 @@ def should_go_for_chat_node_after_audio(state: FRIAgent) -> str:
     state["final_audio_validation_status"] = "PASSED"
     return "No"
 
+def emergency_response(state: FRIAgent) -> FRIAgent:
+    """Handle emergency response."""
+    logger.info("Routing to emergency response.")
+    state["agent_query"] = "This sounds serious and you may need medical or police help. Please use the emergency button to contact 911 immediately."
+    # Placeholder for emergency response logic
+    return state
+
+def route_based_on_sentiment(state: FRIAgent) -> str:
+    """Route based on human sentiment."""
+    sentiment = state.get("human_sentiment", "")
+    if sentiment == "SERIOUS":
+        return "route_to_default_emergency_response"
+    return "get_inputs_for_mode"
+
 friagent_builder = StateGraph(FRIAgent)
 friagent_builder.add_node("init_mode", init_mode)
 friagent_builder.add_node("get_inputs_for_mode", get_inputs_for_mode)
@@ -281,17 +317,29 @@ friagent_builder.add_node("update_towing_form", update_towing_form)
 friagent_builder.add_node("chat_node", chat_node)
 friagent_builder.add_node("human_interrupt", human_interrupt)
 friagent_builder.add_node("reset_mode", reset_mode)
+friagent_builder.add_node("detect_human_sentiment", detect_human_sentiment)
+friagent_builder.add_node("route_to_default_emergency_response", emergency_response)
+friagent_builder.add_node("emergency_response", emergency_response)
 
 friagent_builder.add_edge(START, "init_mode")
 friagent_builder.add_conditional_edges(
     "init_mode",
     route_to_chat_or_audio,
     {
-        "audio_mode": "get_inputs_for_mode",
+        "audio_mode": "detect_human_sentiment",
         "chat_mode": "human_interrupt",
         "initiate": "chat_node"
     }
 )
+friagent_builder.add_conditional_edges(
+    "detect_human_sentiment",
+    route_based_on_sentiment,
+    {
+        "route_to_default_emergency_response": "emergency_response",
+        "get_inputs_for_mode": "get_inputs_for_mode"
+    }
+)
+friagent_builder.add_edge("emergency_response", END)
 friagent_builder.add_edge("get_inputs_for_mode", "extract_info_from_transcription")
 friagent_builder.add_edge("extract_info_from_transcription", "validate_extracted_info")
 friagent_builder.add_edge("validate_extracted_info", "update_towing_form")
@@ -333,7 +381,7 @@ friagent = friagent_builder.compile(checkpointer=checkpoint_saver)
     #print("\nFields processed:\n", out.get("fields_processed"))
     #print("\n--- TURN 2: USER ANSWERS ---\n")
 
-    #state2 = out  
+    #state2 = out
     #state2["agent_state"] = "in_progress"
     #state2["mode"] = "chat"
     #state2["user_response"] = "My car broke down on I-90 and won’t start."
@@ -362,4 +410,3 @@ friagent = friagent_builder.compile(checkpointer=checkpoint_saver)
     #print("\nValidation status:\n", out3.get("validation_status"))
     #print("\nTowing form:\n", out3.get("towing_form"))
     #print("\nFields processed:\n", out3.get("fields_processed"))
-
