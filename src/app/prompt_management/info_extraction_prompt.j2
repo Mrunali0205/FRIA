@@ -22,7 +22,7 @@ mode: {{ mode }}  # "audio" or "chat"
       - incident: What happened? (brief description of the incident)
       - operability: Is the vehicle operable? ("yes", "no", or null)
       - vehicle_condition: Description of vehicle damage or condition
-      - battery_condition: Battery status only if the vehicle is electric, otherwise null
+      - battery_condition: Current battery status (e.g., low, dead, not charging, unknown, drain)
 
     OUTPUT FORMAT:
       ```json
@@ -58,7 +58,7 @@ mode: {{ mode }}  # "audio" or "chat"
         - incident: "noise in the car and it stopped" (user described what happened)
         - operability: "no" (user mentioned the vehicle is not operable)
         - vehicle_condition: "smoke coming from the engine, engine is damaged" (user described the condition)
-        - battery_condition: "not-electric" (vehicle is non-electric)
+        - battery_condition: "electric" 
         OUTPUT:
         ```json
         {

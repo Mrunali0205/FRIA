@@ -232,6 +232,7 @@ def chat_node(state: FRIAgent) -> FRIAgent:
     try:
         user_response = state.get("user_response", "")
         validation_status = state.get("validation_status", {})
+        print(validation_status)
         mode = state.get("mode", "")
         fields_processed = state.get("fields_processed", {})
         prompt = load_template("chat_prompt_template.j2", {
